@@ -1,6 +1,7 @@
 ﻿using Harmony;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
+using Klyte.PropSwitcher.Data;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
@@ -41,7 +42,7 @@ namespace Klyte.PropSwitcher.Overrides
         public static string m_in = "Bus Stop Large";
         public static string m_out = "São Paulo 2000's bus stop.São Paulo 2000's bus stop_Data";
 
-        public static void ApplySwitch(ref PropInfo info) => info = GetTargetInfo(info);
+        public static bool ApplySwitch(ref PropInfo info) => (info = GetTargetInfo(info)) != null;
 
         public static IEnumerable<CodeInstruction> DetourRenederInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
@@ -64,11 +65,9 @@ namespace Klyte.PropSwitcher.Overrides
 
         public static PropInfo GetTargetInfo(PropInfo info)
         {
-            if (info.name == m_in)
+            if (PSData.Instance.Entries.ContainsKey(info.name))
             {
-                info = PrefabCollection<PropInfo>.FindLoaded(m_out ?? "") ?? info;
-
-                //  LogUtils.DoWarnLog($"info.m_hasEffects ={info.m_hasEffects }");
+                info = PSData.Instance.Entries[info.name].CachedProp;
             }
 
             return info;
