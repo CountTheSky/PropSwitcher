@@ -171,6 +171,7 @@
     <Compile Include="commons\Utils\VehicleUtils.cs" />
     <Compile Include="commons\Utils\XmlUtils.cs" />
     <Compile Include="commons\Utils\ZipUtils.cs" />
+    <Compile Include="Overrides\PropInstanceOverrides.cs" />
     <Compile Include="PropSwitcherMod.cs" />
     <Compile Include="PSController.cs" />
     <Compile Include="PSPanel.cs" />
