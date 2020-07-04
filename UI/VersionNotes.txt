@@ -1,2 +1,13 @@
-﻿<color #AA44FF>PSv0.0</color>
-	-Initial version
+﻿<color #FF8800>Welcome to Prop Switcher!</color>
+
+This mod will allow you to switch props and trees in roads, buildings or the whole city. But remember: Trees can only be replaced by trees, same for props!
+
+Unlike the <color gray>Prop It Up</color> mod, this mod doesn't filter props by seating properties or other special effects. So, better you know what you will do in this aspect.
+In counterpart, there are no problem on replacing various props or trees to same model, once all configurations done by <sprite K45_PS_Icon> changes only the rendering result, so no problem like losing further reference to original assets positions!
+Also, you can strip out the prop by simple leaving the replacement field blank.
+
+Check the workshop page (second button on bottom buttons strip) for more information and tips.
+
+<color cyan><sprite K45_ACE_Icon> Asset Color Expander mod users:</color>  isn't working as expected with this mod until it get updated at least to version 1.0.1. Until there, the rules will be applied like the prop was the original one, not the switched. The update must be released soon. <color yellow>Ignore this note if it's already updated to 1.0.1 or higher! (or if you don't use that mod)</color>
+
+<color cyan><sprite K45_KWTSIcon> Write the Signs mod users:</color> props layouts WILL NOT be affected by this mod, so you will need to edit layouts with undesired prop models... 

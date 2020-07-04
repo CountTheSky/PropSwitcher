@@ -3,11 +3,12 @@ using ColossalFramework.UI;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-[assembly: AssemblyVersion("0.0.0.*")]
+[assembly: AssemblyVersion("1.0.0.0")]
 namespace Klyte.PropSwitcher
 {
     public class PropSwitcherMod : BasicIUserMod<PropSwitcherMod, PSController, PSPanel>
@@ -28,5 +29,8 @@ namespace Klyte.PropSwitcher
             KlyteMonoUtils.LimitWidth(namesFilesButton, 710);
             namesFilesButton.text = fileInfo.FullName + Path.DirectorySeparatorChar;
         }
+
+        protected override List<ulong> IncompatibleModList => new List<ulong> { 878991312u };
+        protected override List<string> IncompatibleDllModList => new List<string> { "PropItUp" };
     }
 }

@@ -34,6 +34,18 @@ namespace Klyte.PropSwitcher.UI
             layoutPanel.clipChildren = true;
             var uiHelper = new UIHelperExtension(layoutPanel);
 
+            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 50));
+            m_actionBar.autoLayout = true;
+            m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
+            m_actionBar.padding = new RectOffset(5, 5, 5, 5);
+            m_actionBar.autoFitChildrenVertically = true;
+            var m_topHelper = new UIHelperExtension(m_actionBar);
+
+            AddLabel("", m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription);
+            var m_btnDelete = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", false);
+            var m_btnImport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", false);
+            var m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", false);
+
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
             uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule);
@@ -52,7 +64,7 @@ namespace Klyte.PropSwitcher.UI
             col2Title.text = Locale.Get("K45_PS_SWITCHTO_TITLE");
             col3Title.text = Locale.Get("K45_PS_ACTIONS_TITLE");
 
-            KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "previewPanel", new UnityEngine.Vector4(0, 0, listContainerWidth, 380));
+            KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "previewPanel", new UnityEngine.Vector4(0, 0, listContainerWidth, 420));
 
             KlyteMonoUtils.CreateScrollPanel(m_listContainer, out m_detourList, out _, m_listContainer.width - 20, m_listContainer.height);
             m_detourList.backgroundSprite = "OptionsScrollbarTrack";
@@ -62,17 +74,6 @@ namespace Klyte.PropSwitcher.UI
             m_listItems = new UITemplateList<UIPanel>(m_detourList, DETOUR_ITEM_TEMPLATE);
             UpdateDetoursList();
 
-            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 50));
-            m_actionBar.autoLayout = true;
-            m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
-            m_actionBar.padding = new RectOffset(5, 5, 5, 5);
-            m_actionBar.autoFitChildrenVertically = true;
-            var m_topHelper = new UIHelperExtension(m_actionBar);
-
-            AddLabel("", m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription);
-            var m_btnDelete = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", false);
-            var m_btnImport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", false);
-            var m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", false);
 
         }
 

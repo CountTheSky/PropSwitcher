@@ -24,7 +24,8 @@ namespace Klyte.PropSwitcher.UI
         private UITextField m_out;
         private UIScrollablePanel m_detourList;
         private UITemplateList<UIPanel> m_listItems;
-
+        private UIButton m_btnDelete;
+        private UIButton m_btnExport;
         protected abstract Dictionary<string, T> PrefabsLoaded { get; }
 
         private UIPanel m_actionBar;
@@ -39,6 +40,18 @@ namespace Klyte.PropSwitcher.UI
             layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 10, 10);
             layoutPanel.clipChildren = true;
             var uiHelper = new UIHelperExtension(layoutPanel);
+
+            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 50));
+            m_actionBar.autoLayout = true;
+            m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
+            m_actionBar.padding = new RectOffset(5, 5, 5, 5);
+            m_actionBar.autoFitChildrenVertically = true;
+            var m_topHelper = new UIHelperExtension(m_actionBar);
+
+            AddLabel("", m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription);
+            m_btnDelete = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", false);
+            m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, OnExportAsGlobal, "K45_PS_EXPORTASGLOBAL", false);
+            AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Reload, () => PropSwitcherMod.Controller.ReloadPropGlobals(), "K45_PS_RELOADGLOBAL", false);
 
             AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterPrefab, GetCurrentValuePrefab, OnChangeValuePrefab);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
@@ -71,16 +84,7 @@ namespace Klyte.PropSwitcher.UI
             m_detourList.autoLayoutDirection = LayoutDirection.Vertical;
 
             m_listItems = new UITemplateList<UIPanel>(m_detourList, PSGlobalPropTab.DETOUR_ITEM_TEMPLATE);
-            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 50));
-            m_actionBar.autoLayout = true;
-            m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
-            m_actionBar.padding = new RectOffset(5, 5, 5, 5);
-            m_actionBar.autoFitChildrenVertically = true;
-            var m_topHelper = new UIHelperExtension(m_actionBar);
 
-            AddLabel("", m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription);
-            var m_btnDelete = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", false);
-            var m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, OnExportAsGlobal, "K45_PS_EXPORTASGLOBAL", false);
 
 
             UpdateDetoursList();
@@ -193,8 +197,10 @@ namespace Klyte.PropSwitcher.UI
             m_out.parent.isVisible = isEditable;
             m_addButton.isVisible = isEditable;
             m_detourList.parent.isVisible = isEditable;
-            m_actionBar.isVisible = isEditable;
+            m_btnDelete.isVisible = isEditable;
+            m_btnExport.isVisible = isEditable;
             m_titleRow.isVisible = isEditable;
+
 
             if (isEditable)
             {
