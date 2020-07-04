@@ -1,6 +1,7 @@
 ﻿using Klyte.Commons;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
+using Klyte.PropSwitcher.Tools;
 using Klyte.PropSwitcher.Xml;
 using System;
 using System.Collections.Generic;
@@ -15,11 +16,23 @@ namespace Klyte.PropSwitcher
         public static readonly string FOLDER_NAME = "PropSwitcher";
         public static readonly string FOLDER_PATH = FileUtils.BASE_FOLDER_PATH + FOLDER_NAME;
 
+        public RoadSegmentTool RoadSegmentToolInstance => FindObjectOfType<RoadSegmentTool>();
+        public BuildingEditorTool BuildingEditorToolInstance => FindObjectOfType<BuildingEditorTool>();
+
         public const int MAX_ACCURACY_VALUE = 9;
 
         protected override void StartActions()
         {
             ReloadPropGlobals();
+            if (RoadSegmentToolInstance == null)
+            {
+                FindObjectOfType<ToolController>().gameObject.AddComponent<RoadSegmentTool>();
+            }
+
+            if (BuildingEditorToolInstance == null)
+            {
+                FindObjectOfType<ToolController>().gameObject.AddComponent<BuildingEditorTool>();
+            }
             base.StartActions();
         }
 

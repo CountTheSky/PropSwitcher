@@ -178,6 +178,8 @@
     <Compile Include="PropSwitcherMod.cs" />
     <Compile Include="PSController.cs" />
     <Compile Include="PSPanel.cs" />
+    <Compile Include="Tools\BuildingTool.cs" />
+    <Compile Include="Tools\RoadSegmentTool.cs" />
     <Compile Include="UI\Tabs\PSPrefabPropTab.cs" />
     <Compile Include="UI\Tabs\PSGlobalPropTab.cs" />
     <Compile Include="Xml\PropSwitchInfo.cs" />
@@ -310,6 +312,7 @@
     <EmbeddedResource Include="commons\UI\Images\%25K45_Unlock.png" />
     <EmbeddedResource Include="commons\UI\Images\%25K45_Up.png" />
     <EmbeddedResource Include="commons\UI\Images\%25K45_X.png" />
+    <EmbeddedResource Include="commons\UI\Images\%25K45_Dropper.png" />
     <Content Include="commons\UI\Images\base.psd" />
     <EmbeddedResource Include="commons\UI\Images\bordersDescriptor.txt" />
     <Content Include="commons\UI\Images\sprites.psd" />

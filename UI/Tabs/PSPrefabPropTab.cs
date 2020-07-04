@@ -18,7 +18,7 @@ namespace Klyte.PropSwitcher.UI
 {
     public abstract class PSPrefabPropTab<T> : UICustomControl where T : PrefabInfo
     {
-        private UITextField m_prefab;
+        protected UITextField m_prefab;
         private UIPanel m_titleRow;
         private UITextField m_in;
         private UITextField m_out;
@@ -46,6 +46,8 @@ namespace Klyte.PropSwitcher.UI
             m_addButton = uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule) as UIButton;
             m_prefab.eventTextSubmitted += (x, y) => UpdateDetoursList();
             popup.eventSelectedIndexChanged += (x, y) => UpdateDetoursList();
+
+            AddButtonInEditorRow(m_prefab, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Dropper, EnablePickTool, Locale.Get("K45_PS_ENABLETOOLPICKER"), true, 30).zOrder = m_prefab.zOrder + 1;
 
             float listContainerWidth = layoutPanel.width - 20;
             KlyteMonoUtils.CreateUIElement(out m_titleRow, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, listContainerWidth, 25));
@@ -83,6 +85,8 @@ namespace Klyte.PropSwitcher.UI
 
             UpdateDetoursList();
         }
+
+        internal abstract void EnablePickTool();
 
         private string OnChangeValuePrefab(int arg1, string[] arg2)
         {
@@ -181,7 +185,7 @@ namespace Klyte.PropSwitcher.UI
         }
 
 
-        private void UpdateDetoursList()
+        protected void UpdateDetoursList()
         {
             bool isEditable = !(GetCurrentTargetPrefab()?.name).IsNullOrWhiteSpace();
             PSPropData.Instance.PrefabChildEntries.TryGetValue(GetCurrentTargetPrefab()?.name ?? "", out SimpleXmlDictionary<string, PropSwitchInfo> currentEditingSelection);
@@ -318,6 +322,21 @@ namespace Klyte.PropSwitcher.UI
     {
         protected override Dictionary<string, BuildingInfo> PrefabsLoaded => PropSwitcherMod.Controller.BuildingsLoaded;
 
+        internal override void EnablePickTool()
+        {
+            m_prefab.text = "";
+            UpdateDetoursList();
+            PropSwitcherMod.Controller.BuildingEditorToolInstance.OnBuildingSelect += (x) =>
+            {
+                if (x > 0)
+                {
+                    string infoName = BuildingManager.instance.m_buildings.m_buffer[x].Info.name;
+                    m_prefab.text = PropSwitcherMod.Controller.BuildingsLoaded.Where(x => x.Value.name == infoName).FirstOrDefault().Key ?? "";
+                    UpdateDetoursList();
+                }
+            };
+            PropSwitcherMod.Controller.BuildingEditorToolInstance.enabled = true;
+        }
         internal override bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, PropInfo> x) => GetCurrentTargetPrefab().m_props.Where(y => y.m_finalProp == x.Value).FirstOrDefault() != default;
     }
     public class PSNetPropTab : PSPrefabPropTab<NetInfo>
@@ -325,5 +344,20 @@ namespace Klyte.PropSwitcher.UI
         protected override Dictionary<string, NetInfo> PrefabsLoaded => PropSwitcherMod.Controller.NetsLoaded;
 
         internal override bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, PropInfo> x) => GetCurrentTargetPrefab().m_lanes?.SelectMany(y => y?.m_laneProps?.m_props ?? new NetLaneProps.Prop[0]).Where(y => y?.m_finalProp == x.Value).FirstOrDefault() != default;
+        internal override void EnablePickTool()
+        {
+            m_prefab.text = "";
+            UpdateDetoursList();
+            PropSwitcherMod.Controller.RoadSegmentToolInstance.OnSelectSegment += (x) =>
+            {
+                if (x > 0)
+                {
+                    string infoName = NetManager.instance.m_segments.m_buffer[x].Info.name;
+                    m_prefab.text = PropSwitcherMod.Controller.NetsLoaded.Where(x => x.Value.name == infoName).FirstOrDefault().Key ?? "";
+                    UpdateDetoursList();
+                }
+            };
+            PropSwitcherMod.Controller.RoadSegmentToolInstance.enabled = true;
+        }
     }
 }

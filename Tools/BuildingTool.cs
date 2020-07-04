@@ -1,0 +1,45 @@
+﻿using ColossalFramework;
+using ColossalFramework.Math;
+using ColossalFramework.UI;
+using Klyte.Commons;
+using System;
+using System.Diagnostics;
+using UnityEngine;
+
+namespace Klyte.PropSwitcher.Tools
+{
+
+    public class BuildingEditorTool : BasicBuildingTool<BuildingEditorTool>
+    {
+        public event Action<ushort> OnBuildingSelect;
+
+        public override void RenderOverlay(RenderManager.CameraInfo cameraInfo)
+        {
+
+            if (m_hoverBuilding != 0)
+            {
+                Color toolColor = m_hoverColor;
+                RenderOverlay(cameraInfo, toolColor, m_hoverBuilding);
+                return;
+            }
+
+        }
+
+        protected override void OnLeftClick()
+        {
+            if (m_hoverBuilding != 0)
+            {
+                OnBuildingSelect?.Invoke(m_hoverBuilding);
+                GetComponent<DefaultTool>().enabled = true;
+            }
+        }
+
+        protected override void OnDisable()
+        {
+            OnBuildingSelect = null;
+            base.OnDisable();
+        }
+
+    }
+
+}
