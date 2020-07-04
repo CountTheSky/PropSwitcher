@@ -36,15 +36,27 @@ namespace Klyte.PropSwitcher
             base.StartActions();
         }
 
-        private Dictionary<string, PropInfo> m_propsLoaded;
-        public Dictionary<string, PropInfo> PropsLoaded
+        private Dictionary<string, string> m_propsLoaded;
+        public Dictionary<string, string> PropsLoaded
         {
             get {
                 if (m_propsLoaded == null)
                 {
-                    m_propsLoaded = GetInfos<PropInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second);
+                    m_propsLoaded = GetInfos<PropInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second.name);
                 }
                 return m_propsLoaded;
+            }
+        }
+
+        private Dictionary<string, string> m_treesLoaded;
+        public Dictionary<string, string> TreesLoaded
+        {
+            get {
+                if (m_treesLoaded == null)
+                {
+                    m_treesLoaded = GetInfos<TreeInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second.name);
+                }
+                return m_treesLoaded;
             }
         }
 
@@ -95,7 +107,7 @@ namespace Klyte.PropSwitcher
 
         private static string GetListName<T>(T x) where T : PrefabInfo => (x?.name?.EndsWith("_Data") ?? false) ? $"{x?.GetLocalizedTitle()}" : x?.name ?? "";
 
-        public SimpleXmlDictionary<string, SimpleXmlDictionary<string, PropSwitchInfo>> GlobalPrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, SimpleXmlDictionary<string, PropSwitchInfo>>();
+        public SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> GlobalPrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>>();
         internal void ReloadPropGlobals()
         {
             LogUtils.DoLog("LOADING BUILDING CONFIG START -----------------------------");
@@ -145,10 +157,10 @@ namespace Klyte.PropSwitcher
         }
 
 
-        private void LoadDescriptorsFromXml(FileStream stream, SimpleXmlDictionary<string, SimpleXmlDictionary<string, PropSwitchInfo>> referenceDic)
+        private void LoadDescriptorsFromXml(FileStream stream, SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> referenceDic)
         {
-            var serializer = new XmlSerializer(typeof(ILibableAsContainer<string, PropSwitchInfo>));
-            if (serializer.Deserialize(stream) is ILibableAsContainer<string, PropSwitchInfo> config)
+            var serializer = new XmlSerializer(typeof(ILibableAsContainer<string, SwitchInfo>));
+            if (serializer.Deserialize(stream) is ILibableAsContainer<string, SwitchInfo> config)
             {
                 referenceDic[config.SaveName] = config.Data;
             }

@@ -104,7 +104,7 @@ namespace Klyte.PropSwitcher.UI
         private string[] OnChangeFilterPrefab(string arg)
         {
             return PrefabsLoaded
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.name.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value.name + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.name.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
@@ -123,10 +123,10 @@ namespace Klyte.PropSwitcher.UI
         private void OnExportAsGlobal()
         {
             var targetPrefabName = GetCurrentTargetPrefab()?.name ?? "";
-            if (PSPropData.Instance.PrefabChildEntries.TryGetValue(targetPrefabName, out SimpleXmlDictionary<string, PropSwitchInfo> currentEditingSelection))
+            if (PSPropData.Instance.PrefabChildEntries.TryGetValue(targetPrefabName, out SimpleXmlDictionary<string, SwitchInfo> currentEditingSelection))
             {
                 var targetFilename = Path.Combine(PSController.DefaultGlobalPropConfigurationFolder, $"{targetPrefabName}.xml");
-                File.WriteAllText(targetFilename, XmlUtils.DefaultXmlSerialize(new ILibableAsContainer<string, PropSwitchInfo>
+                File.WriteAllText(targetFilename, XmlUtils.DefaultXmlSerialize(new ILibableAsContainer<string, SwitchInfo>
                 {
                     SaveName = targetPrefabName,
                     Data = currentEditingSelection
@@ -172,7 +172,7 @@ namespace Klyte.PropSwitcher.UI
 
         private void OnRemoveDetour(UIComponent component, UIMouseEventParameter eventParam)
         {
-            if (PSPropData.Instance.PrefabChildEntries.TryGetValue(GetCurrentTargetPrefab()?.name ?? "", out SimpleXmlDictionary<string, PropSwitchInfo> currentEditingSelection))
+            if (PSPropData.Instance.PrefabChildEntries.TryGetValue(GetCurrentTargetPrefab()?.name ?? "", out SimpleXmlDictionary<string, SwitchInfo> currentEditingSelection))
             {
                 currentEditingSelection.Remove(component.parent.parent.stringUserData);
 
@@ -188,7 +188,7 @@ namespace Klyte.PropSwitcher.UI
         protected void UpdateDetoursList()
         {
             bool isEditable = !(GetCurrentTargetPrefab()?.name).IsNullOrWhiteSpace();
-            PSPropData.Instance.PrefabChildEntries.TryGetValue(GetCurrentTargetPrefab()?.name ?? "", out SimpleXmlDictionary<string, PropSwitchInfo> currentEditingSelection);
+            PSPropData.Instance.PrefabChildEntries.TryGetValue(GetCurrentTargetPrefab()?.name ?? "", out SimpleXmlDictionary<string, SwitchInfo> currentEditingSelection);
             m_in.parent.isVisible = isEditable;
             m_out.parent.isVisible = isEditable;
             m_addButton.isVisible = isEditable;
@@ -198,7 +198,7 @@ namespace Klyte.PropSwitcher.UI
 
             if (isEditable)
             {
-                var keyList = currentEditingSelection?.Keys.OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x == y.Value.name).FirstOrDefault().Key ?? x).ToArray() ?? new string[0];
+                var keyList = currentEditingSelection?.Keys.OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x == y.Value).FirstOrDefault().Key ?? x).ToArray() ?? new string[0];
                 UIPanel[] districtChecks = m_listItems.SetItemCount(keyList.Length);
                 for (int i = 0; i < keyList.Length; i++)
                 {
@@ -217,11 +217,11 @@ namespace Klyte.PropSwitcher.UI
 
                     currentItem.stringUserData = keyList[i];
 
-                    col1.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => keyList[i] == y.Value.name).FirstOrDefault().Key ?? keyList[i];
+                    col1.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => keyList[i] == y.Value).FirstOrDefault().Key ?? keyList[i];
 
-                    var target = currentEditingSelection[keyList[i]]?.TargetProp;
+                    var target = currentEditingSelection[keyList[i]]?.TargetPrefab;
 
-                    col2.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => target == y.Value.name).FirstOrDefault().Key ?? target ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+                    col2.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => target == y.Value).FirstOrDefault().Key ?? target ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
 
                     currentItem.backgroundSprite = currentItem.zOrder % 2 == 0 ? "" : "InfoPanel";
 
@@ -255,9 +255,12 @@ namespace Klyte.PropSwitcher.UI
             }
             if (!PSPropData.Instance.PrefabChildEntries.ContainsKey(GetCurrentTargetPrefab().name) || PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name] == null)
             {
-                PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name] = new SimpleXmlDictionary<string, PropSwitchInfo>();
+                PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name] = new SimpleXmlDictionary<string, SwitchInfo>();
             }
-            PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][PropSwitcherMod.Controller.PropsLoaded[m_in.text].name] = new Xml.PropSwitchInfo { TargetProp = m_out.text.IsNullOrWhiteSpace() ? null : PropSwitcherMod.Controller.PropsLoaded[m_out.text].name };
+            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out string inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
+            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out string outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
+
+            PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText] = new Xml.SwitchInfo { TargetPrefab = m_out.text.IsNullOrWhiteSpace() ? null : outText };
 
             for (int i = 0; i < 32; i++)
             {
@@ -283,16 +286,21 @@ namespace Klyte.PropSwitcher.UI
         private string GetCurrentValueOut() => "";
         private string[] OnChangeFilterOut(string arg)
         {
+            if (m_in.text.IsNullOrWhiteSpace())
+            {
+                return new string[0];
+            }
+
             T prefab = GetCurrentTargetPrefab();
-            return PropSwitcherMod.Controller.PropsLoaded
-                .Where(x => (!PSPropData.Instance.PrefabChildEntries.ContainsKey(prefab.name) || !PSPropData.Instance.PrefabChildEntries[prefab.name].ContainsKey(x.Value.name)))
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.name.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
+            return (PropSwitcherMod.Controller.PropsLoaded.ContainsValue(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
+                .Where(x => (!PSPropData.Instance.PrefabChildEntries.ContainsKey(prefab.name) || !PSPropData.Instance.PrefabChildEntries[prefab.name].ContainsKey(x.Value)))
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
         }
 
-        internal abstract bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, PropInfo> x);
+        internal abstract bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, string> x);
         private string GetCurrentValueIn() => "";
         private string OnChangeValueIn(int arg1, string[] arg2)
         {
@@ -310,8 +318,9 @@ namespace Klyte.PropSwitcher.UI
         {
             T prefab = GetCurrentTargetPrefab();
             return PropSwitcherMod.Controller.PropsLoaded
-                .Where(x => (!PSPropData.Instance.PrefabChildEntries.ContainsKey(prefab.name) || !PSPropData.Instance.PrefabChildEntries[prefab.name].ContainsKey(x.Value.name)) && IsPropAvailableOnCurrentPrefab(x))
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.name.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
+            .Union(PropSwitcherMod.Controller.TreesLoaded)
+                .Where(x => (!PSPropData.Instance.PrefabChildEntries.ContainsKey(prefab.name) || !PSPropData.Instance.PrefabChildEntries[prefab.name].ContainsKey(x.Value)) && IsPropAvailableOnCurrentPrefab(x))
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
@@ -331,19 +340,19 @@ namespace Klyte.PropSwitcher.UI
                 if (x > 0)
                 {
                     string infoName = BuildingManager.instance.m_buildings.m_buffer[x].Info.name;
-                    m_prefab.text = PropSwitcherMod.Controller.BuildingsLoaded.Where(x => x.Value.name == infoName).FirstOrDefault().Key ?? "";
+                    m_prefab.text = PropSwitcherMod.Controller.BuildingsLoaded.Where(x => x.Value?.name == infoName).FirstOrDefault().Key ?? "";
                     UpdateDetoursList();
                 }
             };
             PropSwitcherMod.Controller.BuildingEditorToolInstance.enabled = true;
         }
-        internal override bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, PropInfo> x) => GetCurrentTargetPrefab().m_props.Where(y => y.m_finalProp == x.Value).FirstOrDefault() != default;
+        internal override bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, string> x) => GetCurrentTargetPrefab().m_props.Where(y => y.m_finalProp?.name == x.Value || y.m_finalTree?.name == x.Value).FirstOrDefault() != default;
     }
     public class PSNetPropTab : PSPrefabPropTab<NetInfo>
     {
         protected override Dictionary<string, NetInfo> PrefabsLoaded => PropSwitcherMod.Controller.NetsLoaded;
 
-        internal override bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, PropInfo> x) => GetCurrentTargetPrefab().m_lanes?.SelectMany(y => y?.m_laneProps?.m_props ?? new NetLaneProps.Prop[0]).Where(y => y?.m_finalProp == x.Value).FirstOrDefault() != default;
+        internal override bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, string> x) => GetCurrentTargetPrefab().m_lanes?.SelectMany(y => y?.m_laneProps?.m_props ?? new NetLaneProps.Prop[0]).Where(y => y?.m_finalProp?.name == x.Value || y?.m_finalTree?.name == x.Value).FirstOrDefault() != default;
         internal override void EnablePickTool()
         {
             m_prefab.text = "";
@@ -353,7 +362,7 @@ namespace Klyte.PropSwitcher.UI
                 if (x > 0)
                 {
                     string infoName = NetManager.instance.m_segments.m_buffer[x].Info.name;
-                    m_prefab.text = PropSwitcherMod.Controller.NetsLoaded.Where(x => x.Value.name == infoName).FirstOrDefault().Key ?? "";
+                    m_prefab.text = PropSwitcherMod.Controller.NetsLoaded.Where(x => x.Value?.name == infoName).FirstOrDefault().Key ?? "";
                     UpdateDetoursList();
                 }
             };

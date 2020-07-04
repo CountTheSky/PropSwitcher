@@ -5,7 +5,7 @@ using System.Xml.Serialization;
 
 namespace Klyte.PropSwitcher.Libraries
 {
-    [XmlRoot("LibPropSettings")] public class PSLibPropSettings : LibBaseFile<PSLibPropSettings, ILibableAsContainer<string, PropSwitchInfo>> { protected override string XmlName => "LibPropSwitchList"; }
+    [XmlRoot("LibPropSettings")] public class PSLibPropSettings : LibBaseFile<PSLibPropSettings, ILibableAsContainer<string, SwitchInfo>> { protected override string XmlName => "LibPropSwitchList"; }
 
 
 }

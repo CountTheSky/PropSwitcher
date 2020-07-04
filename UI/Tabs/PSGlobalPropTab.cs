@@ -78,7 +78,7 @@ namespace Klyte.PropSwitcher.UI
 
         private void OnClearList()
         {
-            PSPropData.Instance.PropEntries = new SimpleXmlDictionary<string, PropSwitchInfo>();
+            PSPropData.Instance.Entries = new SimpleXmlDictionary<string, SwitchInfo>();
             for (int i = 0; i < 32; i++)
             {
                 RenderManager.instance.UpdateGroups(i);
@@ -141,9 +141,9 @@ namespace Klyte.PropSwitcher.UI
         private static void AddCurrentListToLibrary(string text)
         {
             PSLibPropSettings.Reload();
-            var newItem = new ILibableAsContainer<string, PropSwitchInfo>
+            var newItem = new ILibableAsContainer<string, SwitchInfo>
             {
-                Data = PSPropData.Instance.PropEntries
+                Data = PSPropData.Instance.Entries
             };
             PSLibPropSettings.Instance.Add(text, ref newItem);
             K45DialogControl.ShowModal(new K45DialogControl.BindProperties
@@ -181,7 +181,7 @@ namespace Klyte.PropSwitcher.UI
                     if (ret == 1)
                     {
                         var newConfig = PSLibPropSettings.Instance.Get(selText);
-                        PSPropData.Instance.PropEntries = newConfig.Data;
+                        PSPropData.Instance.Entries = newConfig.Data;
                         for (int i = 0; i < 32; i++)
                         {
                             RenderManager.instance.UpdateGroups(i);
@@ -251,9 +251,9 @@ namespace Klyte.PropSwitcher.UI
 
         private void OnRemoveDetour(UIComponent component, UIMouseEventParameter eventParam)
         {
-            if (PSPropData.Instance.PropEntries.ContainsKey(component.parent.parent.stringUserData))
+            if (PSPropData.Instance.Entries.ContainsKey(component.parent.parent.stringUserData))
             {
-                PSPropData.Instance.PropEntries.Remove(component.parent.parent.stringUserData);
+                PSPropData.Instance.Entries.Remove(component.parent.parent.stringUserData);
 
                 for (int i = 0; i < 32; i++)
                 {
@@ -266,7 +266,7 @@ namespace Klyte.PropSwitcher.UI
 
         private void UpdateDetoursList()
         {
-            var keyList = PSPropData.Instance.PropEntries.Keys.OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x == y.Value.name).FirstOrDefault().Key ?? x).ToArray();
+            var keyList = PSPropData.Instance.Entries.Keys.OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x == y.Value).FirstOrDefault().Key ?? x).ToArray();
             UIPanel[] districtChecks = m_listItems.SetItemCount(keyList.Length);
             for (int i = 0; i < keyList.Length; i++)
             {
@@ -285,11 +285,11 @@ namespace Klyte.PropSwitcher.UI
 
                 currentItem.stringUserData = keyList[i];
 
-                col1.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => keyList[i] == y.Value.name).FirstOrDefault().Key ?? keyList[i];
+                col1.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => keyList[i] == y.Value).FirstOrDefault().Key ?? keyList[i];
 
-                var target = PSPropData.Instance.PropEntries[keyList[i]]?.TargetProp;
+                var target = PSPropData.Instance.Entries[keyList[i]]?.TargetPrefab;
 
-                col2.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => target == y.Value.name).FirstOrDefault().Key ?? target ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+                col2.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => target == y.Value).FirstOrDefault().Key ?? target ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
 
                 currentItem.backgroundSprite = currentItem.zOrder % 2 == 0 ? "" : "InfoPanel";
 
@@ -311,7 +311,10 @@ namespace Klyte.PropSwitcher.UI
                 return;
             }
 
-            PSPropData.Instance.PropEntries[PropSwitcherMod.Controller.PropsLoaded[m_in.text].name] = new Xml.PropSwitchInfo { TargetProp = m_out.text.IsNullOrWhiteSpace() ? null : PropSwitcherMod.Controller.PropsLoaded[m_out.text].name };
+            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out string inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
+            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out string outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
+
+            PSPropData.Instance.Entries[inText] = new Xml.SwitchInfo { TargetPrefab = m_out.text.IsNullOrWhiteSpace() ? null : outText };
 
             for (int i = 0; i < 32; i++)
             {
@@ -335,12 +338,20 @@ namespace Klyte.PropSwitcher.UI
             }
         }
         private string GetCurrentValueOut() => "";
-        private string[] OnChangeFilterOut(string arg) => PropSwitcherMod.Controller.PropsLoaded
-                .Where(x => !PSPropData.Instance.PropEntries.ContainsKey(x.Value.name))
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.name.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
+        private string[] OnChangeFilterOut(string arg)
+        {
+            if (m_in.text.IsNullOrWhiteSpace())
+            {
+                return new string[0];
+            }
+            return (PropSwitcherMod.Controller.PropsLoaded.ContainsValue(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
+                .Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
+        }
+
         private string GetCurrentValueIn() => "";
         private string OnChangeValueIn(int arg1, string[] arg2)
         {
@@ -356,8 +367,9 @@ namespace Klyte.PropSwitcher.UI
 
         private string[] OnChangeFilterIn(string arg) =>
             PropSwitcherMod.Controller.PropsLoaded
-                .Where(x => !PSPropData.Instance.PropEntries.ContainsKey(x.Value.name))
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.name.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
+            .Union(PropSwitcherMod.Controller.TreesLoaded)
+            .Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();

@@ -87,14 +87,14 @@ namespace Klyte.PropSwitcher.Overrides
                 parentName = BuildingManager.instance.m_buildings.m_buffer[id.Building].Info.name;
 
             }
-            if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, PropSwitchInfo> switchInfoDict) || (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDict) ?? false)) && switchInfoDict != null && switchInfoDict.TryGetValue(info.name, out PropSwitchInfo switchInfo) && switchInfo != null)
+            if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) || (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDict) ?? false)) && switchInfoDict != null && switchInfoDict.TryGetValue(info.name, out SwitchInfo switchInfo) && switchInfo != null)
             {
                 return switchInfo.CachedProp;
             }
 
-            if (PSPropData.Instance.PropEntries.ContainsKey(info.name))
+            if (PSPropData.Instance.Entries.ContainsKey(info.name))
             {
-                info = PSPropData.Instance.PropEntries[info.name].CachedProp;
+                info = PSPropData.Instance.Entries[info.name].CachedProp;
             }
 
             return info;

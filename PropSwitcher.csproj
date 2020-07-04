@@ -174,6 +174,7 @@
     <Compile Include="Data\PSPropData.cs" />
     <Compile Include="Lib\BasicLib.cs" />
     <Compile Include="ModShared\PSShared.cs" />
+    <Compile Include="Overrides\TreeInstanceOverrides.cs" />
     <Compile Include="Overrides\PropInstanceOverrides.cs" />
     <Compile Include="PropSwitcherMod.cs" />
     <Compile Include="PSController.cs" />
@@ -182,7 +183,7 @@
     <Compile Include="Tools\RoadSegmentTool.cs" />
     <Compile Include="UI\Tabs\PSPrefabPropTab.cs" />
     <Compile Include="UI\Tabs\PSGlobalPropTab.cs" />
-    <Compile Include="Xml\PropSwitchInfo.cs" />
+    <Compile Include="Xml\SwitchInfo.cs" />
   </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>
