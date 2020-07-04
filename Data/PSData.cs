@@ -8,7 +8,7 @@ namespace Klyte.PropSwitcher.Data
     public class PSData : DataExtensorBase<PSData>
     {
         [XmlElement("Entries")]
-        public SimpleXmlDictionary<string, SwitchInfo> Entries { get; set; } = new SimpleXmlDictionary<string, SwitchInfo>();
+        public SimpleXmlDictionary<string, PropSwitchInfo> Entries { get; set; } = new SimpleXmlDictionary<string, PropSwitchInfo>();
 
         public override string SaveId { get; } = "K45_PS_BasicData";
     }

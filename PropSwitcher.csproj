@@ -172,12 +172,13 @@
     <Compile Include="commons\Utils\XmlUtils.cs" />
     <Compile Include="commons\Utils\ZipUtils.cs" />
     <Compile Include="Data\PSData.cs" />
+    <Compile Include="Lib\BasicLib.cs" />
     <Compile Include="ModShared\PSShared.cs" />
     <Compile Include="Overrides\PropInstanceOverrides.cs" />
     <Compile Include="PropSwitcherMod.cs" />
     <Compile Include="PSController.cs" />
     <Compile Include="PSPanel.cs" />
-    <Compile Include="Xml\PSEntry.cs" />
+    <Compile Include="Xml\PropSwitchInfo.cs" />
   </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>

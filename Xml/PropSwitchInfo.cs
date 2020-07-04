@@ -2,7 +2,7 @@
 
 namespace Klyte.PropSwitcher.Xml
 {
-    public class SwitchInfo
+    public class PropSwitchInfo
     {
         [XmlAttribute]
         public string TargetProp { get; set; }

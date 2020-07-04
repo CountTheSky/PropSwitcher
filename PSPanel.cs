@@ -5,6 +5,8 @@ using Klyte.Commons.Extensors;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
+using Klyte.PropSwitcher.Libraries;
+using Klyte.PropSwitcher.Xml;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -21,6 +23,9 @@ namespace Klyte.PropSwitcher
         private UITextField m_out;
         private UIScrollablePanel m_detourList;
         private UITemplateList<UIPanel> m_listItems;
+
+        private UIPanel m_actionBar;
+
 
         public override float PanelWidth => m_controlContainer.width;
 
@@ -63,10 +68,25 @@ namespace Klyte.PropSwitcher
             layoutPanel.clipChildren = true;
             var uiHelper = new UIHelperExtension(layoutPanel);
 
-            AddFilterableInput("FROM", uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
-            AddFilterableInput("TO", uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
-            uiHelper.AddButton("ADD!!!", OnAddRule);
-            KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "previewPanel", new UnityEngine.Vector4(0, 0, layoutPanel.width - 20, 500));
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
+            uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule);
+
+            float listContainerWidth = layoutPanel.width - 20;
+            KlyteMonoUtils.CreateUIElement(out UIPanel titleRow, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, listContainerWidth, 25));
+            titleRow.autoLayout = true;
+            titleRow.wrapLayout = false;
+            titleRow.autoLayoutDirection = LayoutDirection.Horizontal;
+
+            CreateRowPlaceHolder(listContainerWidth - 20, titleRow, out UILabel col1Title, out UILabel col2Title, out UILabel col3Title);
+            KlyteMonoUtils.LimitWidthAndBox(col1Title, col1Title.width, true);
+            KlyteMonoUtils.LimitWidthAndBox(col2Title, col2Title.width, true);
+            KlyteMonoUtils.LimitWidthAndBox(col3Title, col3Title.width, true);
+            col1Title.text = Locale.Get("K45_PS_SWITCHFROM_TITLE");
+            col2Title.text = Locale.Get("K45_PS_SWITCHTO_TITLE");
+            col3Title.text = Locale.Get("K45_PS_ACTIONS_TITLE");
+
+            KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "previewPanel", new UnityEngine.Vector4(0, 0, listContainerWidth, 460));
 
             KlyteMonoUtils.CreateScrollPanel(m_listContainer, out m_detourList, out _, m_listContainer.width - 20, m_listContainer.height);
             m_detourList.backgroundSprite = "OptionsScrollbarTrack";
@@ -76,33 +96,191 @@ namespace Klyte.PropSwitcher
             m_listItems = new UITemplateList<UIPanel>(m_detourList, DETOUR_ITEM_TEMPLATE);
             UpdateDetoursList();
 
+            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, MainPanel.width - MainPanel.padding.horizontal, 50));
+            m_actionBar.autoLayout = true;
+            m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
+            m_actionBar.padding = new RectOffset(5, 5, 5, 5);
+            m_actionBar.autoFitChildrenVertically = true;
+            var m_topHelper = new UIHelperExtension(m_actionBar);
+
+            AddLabel("", m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription);
+            var m_btnDelete = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", false);
+            var m_btnImport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", false);
+            var m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", false);
+
         }
+
+        private void OnClearList()
+        {
+            PSData.Instance.Entries = new SimpleXmlDictionary<string, PropSwitchInfo>();
+            for (int i = 0; i < 32; i++)
+            {
+                RenderManager.instance.UpdateGroups(i);
+            }
+            UpdateDetoursList();
+        }
+
+        private void OnExportData(string defaultText = null)
+        {
+            K45DialogControl.ShowModalPromptText(new K45DialogControl.BindProperties
+            {
+                defaultTextFieldContent = defaultText,
+                message = Locale.Get("K45_PS_TYPESAVENAMEFORLIST"),
+                showButton1 = true,
+                textButton1 = Locale.Get("SAVE"),
+                showButton2 = true,
+                textButton2 = Locale.Get("CANCEL"),
+            }, (ret, text) =>
+            {
+                if (ret == 1)
+                {
+                    if (text.IsNullOrWhiteSpace())
+                    {
+                        K45DialogControl.UpdateCurrentMessage($"<color #FFFF00>{Locale.Get("K45_PS_INVALIDNAME")}</color>\n\n{Locale.Get("K45_PS_TYPESAVENAMEFORLIST")}");
+                        return false;
+                    }
+                    PSLibPropSettings.Reload();
+                    var currentData = PSLibPropSettings.Instance.Get(text);
+                    if (currentData == null)
+                    {
+                        AddCurrentListToLibrary(text);
+                    }
+                    else
+                    {
+                        K45DialogControl.ShowModal(new K45DialogControl.BindProperties
+                        {
+                            message = string.Format(Locale.Get("K45_PS_CONFIRMOVERWRITE"), text),
+                            showButton1 = true,
+                            textButton1 = Locale.Get("YES"),
+                            showButton2 = true,
+                            textButton2 = Locale.Get("NO"),
+                        }, (x) =>
+                        {
+                            if (x == 1)
+                            {
+                                AddCurrentListToLibrary(text);
+                            }
+                            else
+                            {
+                                OnExportData(text);
+                            }
+                            return true;
+                        });
+                    }
+                }
+                return true;
+            });
+
+        }
+        private static void AddCurrentListToLibrary(string text)
+        {
+            PSLibPropSettings.Reload();
+            var newItem = new ILibableAsContainer<string, PropSwitchInfo>
+            {
+                Data = PSData.Instance.Entries
+            };
+            PSLibPropSettings.Instance.Add(text, ref newItem);
+            K45DialogControl.ShowModal(new K45DialogControl.BindProperties
+            {
+                message = string.Format(Locale.Get("K45_PS_SUCCESSEXPORTDATA"), PSLibPropSettings.Instance.DefaultXmlFileBaseFullPath),
+                showButton1 = true,
+                textButton1 = Locale.Get("EXCEPTION_OK"),
+                showButton2 = true,
+                textButton2 = Locale.Get("K45_CMNS_GOTO_FILELOC"),
+            }, (x) =>
+            {
+                if (x == 2)
+                {
+                    ColossalFramework.Utils.OpenInFileBrowser(PSLibPropSettings.Instance.DefaultXmlFileBaseFullPath);
+                    return false;
+                }
+                return true;
+            });
+        }
+        private void OnImportData()
+        {
+            PSLibPropSettings.Reload();
+            string[] optionList = PSLibPropSettings.Instance.List().ToArray();
+            if (optionList.Length > 0)
+            {
+                K45DialogControl.ShowModalPromptDropDown(new K45DialogControl.BindProperties
+                {
+                    message = Locale.Get("K45_PS_SELECTCONFIGTOLOAD"),
+                    showButton1 = true,
+                    textButton1 = Locale.Get("LOAD"),
+                    showButton2 = true,
+                    textButton2 = Locale.Get("CANCEL"),
+                }, optionList, 0, (ret, idx, selText) =>
+                {
+                    if (ret == 1)
+                    {
+                        var newConfig = PSLibPropSettings.Instance.Get(selText);
+                        PSData.Instance.Entries = newConfig.Data;
+                        for (int i = 0; i < 32; i++)
+                        {
+                            RenderManager.instance.UpdateGroups(i);
+                        }
+                        UpdateDetoursList();
+                    }
+                    return true;
+                });
+            }
+            else
+            {
+                K45DialogControl.ShowModal(new K45DialogControl.BindProperties
+                {
+                    message = Locale.Get("K45_PS_EMPTYRULESLISTWARNING"),
+                    showButton1 = true,
+                    textButton1 = Locale.Get("EXCEPTION_OK"),
+                    showButton2 = true,
+                    textButton2 = Locale.Get("K45_CMNS_GOTO_FILELOC"),
+                }, (x) =>
+                {
+                    if (x == 2)
+                    {
+                        PSLibPropSettings.Instance.EnsureFileExists();
+                        ColossalFramework.Utils.OpenInFileBrowser(PSLibPropSettings.Instance.DefaultXmlFileBaseFullPath);
+                        return false;
+                    }
+                    return true;
+                });
+            }
+
+        }
+
         private void CreateTemplateDetourItem()
         {
             var targetWidth = m_detourList.width;
             var go = new GameObject();
             UIPanel panel = go.AddComponent<UIPanel>();
-            panel.size = new Vector2(targetWidth, 36);
+            panel.size = new Vector2(targetWidth, 31);
             panel.autoLayout = true;
             panel.wrapLayout = false;
             panel.autoLayoutDirection = LayoutDirection.Horizontal;
+            panel.autoLayoutPadding = new RectOffset(0, 0, 3, 3);
 
 
             var uiHelper = new UIHelperExtension(panel, LayoutDirection.Horizontal);
-            KlyteMonoUtils.CreateUIElement(out UILabel column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.4f, 30));
-            column1.minimumSize = new Vector2(0, 30);
-            column1.verticalAlignment = UIVerticalAlignment.Middle;
-            column1.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out UILabel column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * 0.4f, 30));
-            column2.minimumSize = new Vector2(0, 30);
-            column2.verticalAlignment = UIVerticalAlignment.Middle;
-            column2.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out UIPanel actionsPanel, panel.transform, "ActionsPanel", new Vector4(0, 0, targetWidth * 0.175f, 30));
+            CreateRowPlaceHolder(targetWidth, panel, out _, out _, out UIPanel actionsPanel);
 
-            KlyteMonoUtils.InitCircledButton(actionsPanel, out UIButton removeButton, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, null, "K45_PS_REMOVE_PROP_RULE", 30);
+            KlyteMonoUtils.InitCircledButton(actionsPanel, out UIButton removeButton, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, null, "K45_PS_REMOVE_PROP_RULE", 22);
             removeButton.name = "RemoveItem";
 
             UITemplateUtils.GetTemplateDict()[DETOUR_ITEM_TEMPLATE] = panel;
+        }
+
+        private static void CreateRowPlaceHolder<T>(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out T actionsContainer) where T : UIComponent
+        {
+            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            column1.minimumSize = new Vector2(0, 25);
+            column1.verticalAlignment = UIVerticalAlignment.Middle;
+            column1.textAlignment = UIHorizontalAlignment.Center;
+            KlyteMonoUtils.CreateUIElement(out column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            column2.minimumSize = new Vector2(0, 25);
+            column2.verticalAlignment = UIVerticalAlignment.Middle;
+            column2.textAlignment = UIHorizontalAlignment.Center;
+            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "ActionsPanel", new Vector4(0, 0, targetWidth * 0.175f, 25));
+            actionsContainer.minimumSize = new Vector2(0, 25);
         }
 
         private void OnRemoveDetour(UIComponent component, UIMouseEventParameter eventParam)
@@ -145,7 +323,9 @@ namespace Klyte.PropSwitcher
 
                 var target = PSData.Instance.Entries[keyList[i]]?.TargetProp;
 
-                col2.text = PropsLoaded.Where(y => target == y.Value).FirstOrDefault().Key ?? target;
+                col2.text = PropsLoaded.Where(y => target == y.Value).FirstOrDefault().Key ?? target ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+
+                currentItem.backgroundSprite = currentItem.zOrder % 2 == 0 ? "" : "InfoPanel";
 
             }
 
@@ -154,18 +334,18 @@ namespace Klyte.PropSwitcher
 
         private void OnAddRule()
         {
-            if (m_in.text.IsNullOrWhiteSpace() || m_out.text.IsNullOrWhiteSpace() || m_in.text == m_out.text)
+            if (m_in.text.IsNullOrWhiteSpace() || m_in.text == m_out.text)
             {
                 K45DialogControl.ShowModal(new K45DialogControl.BindProperties
                 {
-                    message = "INVALID INPUT! CANNOT BE NULL OR EMPTY OR IN EQUALS OUT!",
+                    message = Locale.Get("K45_PS_INVALIDINPUTINOUT"),
                     showButton1 = true,
                     textButton1 = Locale.Get("EXCEPTION_OK")
                 }, x => true);
                 return;
             }
 
-            PSData.Instance.Entries[PropsLoaded[m_in.text]] = new Xml.SwitchInfo { TargetProp = PropsLoaded[m_out.text] };
+            PSData.Instance.Entries[PropsLoaded[m_in.text]] = new Xml.PropSwitchInfo { TargetProp = m_out.text.IsNullOrWhiteSpace() ? null : PropsLoaded[m_out.text] };
 
             for (int i = 0; i < 32; i++)
             {
