@@ -1,9 +1,12 @@
-﻿using ColossalFramework;
+﻿using Klyte.Commons;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
+using Klyte.PropSwitcher.Xml;
 using System;
 using System.Collections.Generic;
-using UnityEngine;
+using System.IO;
+using System.Linq;
+using System.Xml.Serialization;
 
 namespace Klyte.PropSwitcher
 {
@@ -14,10 +17,132 @@ namespace Klyte.PropSwitcher
 
         public const int MAX_ACCURACY_VALUE = 9;
 
-        private static readonly Dictionary<string, Tuple<int, float>> m_cachedValues = new Dictionary<string, Tuple<int, float>>();
+        protected override void StartActions()
+        {
+            ReloadPropGlobals();
+            base.StartActions();
+        }
+
+        private Dictionary<string, PropInfo> m_propsLoaded;
+        public Dictionary<string, PropInfo> PropsLoaded
+        {
+            get {
+                if (m_propsLoaded == null)
+                {
+                    m_propsLoaded = GetInfos<PropInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second);
+                }
+                return m_propsLoaded;
+            }
+        }
+
+        private Dictionary<string, BuildingInfo> m_buildingsLoaded;
+        public Dictionary<string, BuildingInfo> BuildingsLoaded
+        {
+            get {
+                if (m_buildingsLoaded == null)
+                {
+                    m_buildingsLoaded = GetInfos<BuildingInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second);
+                }
+                return m_buildingsLoaded;
+            }
+        }
+
+        private Dictionary<string, NetInfo> m_netsLoaded;
+        public Dictionary<string, NetInfo> NetsLoaded
+        {
+            get {
+                if (m_netsLoaded == null)
+                {
+                    m_netsLoaded = GetInfos<NetInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second);
+                }
+                return m_netsLoaded;
+            }
+        }
+
+        public const string DEFAULT_GLOBAL_PROP_CONFIG_FOLDER = "DefaultReplacingPropOnPrefabs";
+
+        public static string DefaultGlobalPropConfigurationFolder { get; } = FOLDER_NAME + Path.DirectorySeparatorChar + DEFAULT_GLOBAL_PROP_CONFIG_FOLDER;
+
+        private List<T> GetInfos<T>() where T : PrefabInfo
+        {
+            var list = new List<T>();
+            uint num = 0u;
+            while (num < (ulong)PrefabCollection<T>.LoadedCount())
+            {
+                T prefabInfo = PrefabCollection<T>.GetLoaded(num);
+                if (prefabInfo != null)
+                {
+                    list.Add(prefabInfo);
+                }
+                num += 1u;
+            }
+            return list;
+        }
 
 
+        private static string GetListName<T>(T x) where T : PrefabInfo => (x?.name?.EndsWith("_Data") ?? false) ? $"{x?.GetLocalizedTitle()}" : x?.name ?? "";
+
+        public SimpleXmlDictionary<string, SimpleXmlDictionary<string, PropSwitchInfo>> GlobalPrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, SimpleXmlDictionary<string, PropSwitchInfo>>();
+        internal void ReloadPropGlobals()
+        {
+            LogUtils.DoLog("LOADING BUILDING CONFIG START -----------------------------");
+
+            var errorList = new List<string>();
+            GlobalPrefabChildEntries.Clear();
+
+            FileUtils.EnsureFolderCreation(DefaultGlobalPropConfigurationFolder);
+
+            foreach (string filename in Directory.GetFiles(DefaultGlobalPropConfigurationFolder, "*.xml"))
+            {
+                try
+                {
+                    if (CommonProperties.DebugMode)
+                    {
+                        LogUtils.DoLog($"Trying deserialize {filename}:\n{File.ReadAllText(filename)}");
+                    }
+                    using FileStream stream = File.OpenRead(filename);
+                    LoadDescriptorsFromXml(stream, GlobalPrefabChildEntries);
+                }
+                catch (Exception e)
+                {
+                    LogUtils.DoWarnLog($"Error Loading file \"{filename}\" ({e.GetType()}): {e.Message}\n{e}");
+                    errorList.Add($"Error Loading file \"{filename}\" ({e.GetType()}): {e.Message}");
+                }
+            }
+
+            if (errorList.Count > 0)
+            {
+                K45DialogControl.ShowModal(new K45DialogControl.BindProperties
+                {
+                    title = $"{PropSwitcherMod.Instance.SimpleName} - Errors loading Files",
+                    message = string.Join("\r\n", errorList.ToArray()),
+                    useFullWindowWidth = true,
+                    showButton1 = true,
+                    textButton1 = "Okay...",
+                    showClose = true
+
+                }, (x) => true);
+
+            }
+            for (int i = 0; i < 32; i++)
+            {
+                RenderManager.instance.UpdateGroups(i);
+            }
+            LogUtils.DoLog("LOADING GLOBAL CONFIG END -----------------------------");
+        }
 
 
+        private void LoadDescriptorsFromXml(FileStream stream, SimpleXmlDictionary<string, SimpleXmlDictionary<string, PropSwitchInfo>> referenceDic)
+        {
+            var serializer = new XmlSerializer(typeof(ILibableAsContainer<string, PropSwitchInfo>));
+            if (serializer.Deserialize(stream) is ILibableAsContainer<string, PropSwitchInfo> config)
+            {
+                referenceDic[config.SaveName] = config.Data;
+            }
+            else
+            {
+                throw new Exception("The file wasn't recognized as a valid descriptor!");
+            }
+        }
     }
 }
