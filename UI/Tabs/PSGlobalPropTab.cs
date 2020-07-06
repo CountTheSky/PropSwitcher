@@ -23,6 +23,8 @@ namespace Klyte.PropSwitcher.UI
         private UITemplateList<UIPanel> m_listItems;
 
         private UIPanel m_actionBar;
+        private UITextField m_filterIn;
+        private UITextField m_filterOut;
 
         protected void Awake()
         {
@@ -30,7 +32,7 @@ namespace Klyte.PropSwitcher.UI
             layoutPanel.padding = new RectOffset(8, 8, 10, 10);
             layoutPanel.autoLayout = true;
             layoutPanel.autoLayoutDirection = LayoutDirection.Vertical;
-            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 10, 10);
+            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 5);
             layoutPanel.clipChildren = true;
             var uiHelper = new UIHelperExtension(layoutPanel);
 
@@ -63,6 +65,12 @@ namespace Klyte.PropSwitcher.UI
             col1Title.text = Locale.Get("K45_PS_SWITCHFROM_TITLE");
             col2Title.text = Locale.Get("K45_PS_SWITCHTO_TITLE");
             col3Title.text = Locale.Get("K45_PS_ACTIONS_TITLE");
+
+            KlyteMonoUtils.CreateUIElement(out UIPanel filterRow, layoutPanel.transform, "filterRow", new UnityEngine.Vector4(0, 0, listContainerWidth, 25));
+            filterRow.autoLayout = true;
+            filterRow.wrapLayout = false;
+            filterRow.autoLayoutDirection = LayoutDirection.Horizontal;
+            CreateFilterPlaceHolder(listContainerWidth - 20, filterRow, out m_filterIn, out m_filterOut);
 
             KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "previewPanel", new UnityEngine.Vector4(0, 0, listContainerWidth, 420));
 
@@ -250,6 +258,22 @@ namespace Klyte.PropSwitcher.UI
             actionsContainer.minimumSize = new Vector2(0, 25);
         }
 
+        private void CreateFilterPlaceHolder(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut)
+        {
+            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.UiTextFieldDefaultsForm(filterIn);
+            filterIn.minimumSize = new Vector2(0, 25);
+            filterIn.verticalAlignment = UIVerticalAlignment.Middle;
+            filterIn.eventTextChanged += (x, y) => UpdateDetoursList();
+            filterIn.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
+            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.UiTextFieldDefaultsForm(fillterOut);
+            fillterOut.minimumSize = new Vector2(0, 25);
+            fillterOut.verticalAlignment = UIVerticalAlignment.Middle;
+            fillterOut.eventTextChanged += (x, y) => UpdateDetoursList();
+            fillterOut.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
+        }
+
         private void OnRemoveDetour(UIComponent component, UIMouseEventParameter eventParam)
         {
             if (PSPropData.Instance.Entries.ContainsKey(component.parent.parent.stringUserData))
@@ -267,7 +291,10 @@ namespace Klyte.PropSwitcher.UI
 
         private void UpdateDetoursList()
         {
-            var keyList = PSPropData.Instance.Entries.Keys.OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x == y.Value).FirstOrDefault().Key ?? x).ToArray();
+            var keyList = PSPropData.Instance.Entries.Where(x =>
+            (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
+            && (m_filterOut.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterOut.text, x.Value.TargetPrefab))
+            ).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.Key == y.Value).FirstOrDefault().Key ?? x.Key).ToArray();
             UIPanel[] districtChecks = m_listItems.SetItemCount(keyList.Length);
             for (int i = 0; i < keyList.Length; i++)
             {
@@ -284,13 +311,15 @@ namespace Klyte.PropSwitcher.UI
                     currentItem.objectUserData = true;
                 }
 
-                currentItem.stringUserData = keyList[i];
+                currentItem.stringUserData = keyList[i].Key;
 
-                col1.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => keyList[i] == y.Value).FirstOrDefault().Key ?? keyList[i];
+                col1.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => keyList[i].Key == y.Value).FirstOrDefault().Key ?? keyList[i].Key;
+                col1.tooltip = keyList[i].Key + (PrefabUtils.instance.AuthorList.TryGetValue(keyList[i].Key.Split('.')[0], out string author) ? "\n" + author : "");
 
-                var target = PSPropData.Instance.Entries[keyList[i]]?.TargetPrefab;
+                var target = keyList[i].Value?.TargetPrefab;
 
                 col2.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => target == y.Value).FirstOrDefault().Key ?? target ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+                col2.tooltip = target + (PrefabUtils.instance.AuthorList.TryGetValue(target.Split('.')[0], out author) ? "\n" + author : "");
 
                 currentItem.backgroundSprite = currentItem.zOrder % 2 == 0 ? "" : "InfoPanel";
 
@@ -345,12 +374,13 @@ namespace Klyte.PropSwitcher.UI
             }
             return (PropSwitcherMod.Controller.PropsLoaded.ContainsKey(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
                 //.Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : CheckIfPrefabMatchesFilter(arg, x.Value))
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
         }
 
+        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
         private string GetCurrentValueIn() => "";
         private string OnChangeValueIn(int arg1, string[] arg2)
         {

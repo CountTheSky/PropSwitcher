@@ -39,7 +39,7 @@ namespace Klyte.PropSwitcher.UI
             layoutPanel.padding = new RectOffset(8, 8, 10, 10);
             layoutPanel.autoLayout = true;
             layoutPanel.autoLayoutDirection = LayoutDirection.Vertical;
-            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 10, 10);
+            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 5);
             layoutPanel.clipChildren = true;
             var uiHelper = new UIHelperExtension(layoutPanel);
 
