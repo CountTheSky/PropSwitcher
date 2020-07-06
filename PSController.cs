@@ -1,4 +1,5 @@
-﻿using Klyte.Commons;
+﻿using ColossalFramework.UI;
+using Klyte.Commons;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Tools;
@@ -126,7 +127,7 @@ namespace Klyte.PropSwitcher
                         LogUtils.DoLog($"Trying deserialize {filename}:\n{File.ReadAllText(filename)}");
                     }
                     using FileStream stream = File.OpenRead(filename);
-                    LoadDescriptorsFromXml(stream, GlobalPrefabChildEntries);
+                    LoadDescriptorsFromXml(filename, stream, GlobalPrefabChildEntries);
                 }
                 catch (Exception e)
                 {
@@ -157,12 +158,13 @@ namespace Klyte.PropSwitcher
         }
 
 
-        private void LoadDescriptorsFromXml(FileStream stream, SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> referenceDic)
+        private void LoadDescriptorsFromXml(string filePath, FileStream stream, SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> referenceDic)
         {
             var serializer = new XmlSerializer(typeof(ILibableAsContainer<string, SwitchInfo>));
             if (serializer.Deserialize(stream) is ILibableAsContainer<string, SwitchInfo> config)
             {
                 referenceDic[config.SaveName] = config.Data;
+                referenceDic[config.SaveName].Values.ForEach(x => x.m_fileSource = filePath);
             }
             else
             {

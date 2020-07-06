@@ -51,9 +51,9 @@ namespace Klyte.PropSwitcher.Overrides
             var instrList = new List<CodeInstruction>(instr);
             for (int i = 0; i < instrList.Count; i++)
             {
-                if (instrList[i].operand == typeof(TreeInfo).GetMethod("GetVariation", RedirectorUtils.allFlags))
+                if (instrList[i].operand == typeof(BuildingInfo.Prop).GetField("m_finalTree", RedirectorUtils.allFlags))
                 {
-                    instrList.InsertRange(i - 1, new List<CodeInstruction>
+                    instrList.InsertRange(i + 1, new List<CodeInstruction>
                     {
                         new CodeInstruction(OpCodes.Ldarg_2 ),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") )
@@ -71,9 +71,9 @@ namespace Klyte.PropSwitcher.Overrides
             var instrList = new List<CodeInstruction>(instr);
             for (int i = 0; i < instrList.Count; i++)
             {
-                if (instrList[i].operand == typeof(TreeInfo).GetMethod("GetVariation", RedirectorUtils.allFlags))
+                if (instrList[i].operand == typeof(NetLaneProps.Prop).GetField("m_finalTree", RedirectorUtils.allFlags))
                 {
-                    instrList.InsertRange(i - 1, new List<CodeInstruction>
+                    instrList.InsertRange(i + 1, new List<CodeInstruction>
                     {
                         new CodeInstruction(OpCodes.Ldarg_2 ),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetSegment") )
@@ -91,9 +91,9 @@ namespace Klyte.PropSwitcher.Overrides
             var instrList = new List<CodeInstruction>(instr);
             for (int i = 0; i < instrList.Count; i++)
             {
-                if (instrList[i].operand == typeof(TreeInfo).GetMethod("GetVariation", RedirectorUtils.allFlags))
+                if (instrList[i].operand == typeof(BuildingInfo.Prop).GetField("m_finalTree", RedirectorUtils.allFlags))
                 {
-                    instrList.InsertRange(i - 1, new List<CodeInstruction>
+                    instrList.InsertRange(i + 1, new List<CodeInstruction>
                     {
                         new CodeInstruction(OpCodes.Ldarg_1 ),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") )
@@ -112,9 +112,9 @@ namespace Klyte.PropSwitcher.Overrides
 
             for (int i = 0; i < instrList.Count; i++)
             {
-                if (instrList[i].operand == typeof(TreeInfo).GetMethod("GetVariation", RedirectorUtils.allFlags))
+                if (instrList[i].operand == typeof(NetLaneProps.Prop).GetField("m_finalTree", RedirectorUtils.allFlags))
                 {
-                    instrList.InsertRange(i - 1, new List<CodeInstruction>
+                    instrList.InsertRange(i + 1, new List<CodeInstruction>
                     {
                         new CodeInstruction(OpCodes.Ldarg_1 ),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetSegment") )
@@ -152,6 +152,10 @@ namespace Klyte.PropSwitcher.Overrides
         public static TreeInfo GetTargetInfoFromBuilding(TreeInfo info, ushort buildingId) => GetTargetInfo_internal(info, new InstanceID { Building = buildingId });
         private static TreeInfo GetTargetInfo_internal(TreeInfo info, InstanceID id = default)
         {
+            if (info == null || PSPropData.Instance?.Entries == null)
+            {
+                return info;
+            }
             string parentName = null;
             if (id.NetSegment != 0)
             {
@@ -173,7 +177,9 @@ namespace Klyte.PropSwitcher.Overrides
                 parentName = BuildingManager.instance.m_buildings.m_buffer[id.Building].Info.name;
 
             }
-            if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) || (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDict) ?? false)) && switchInfoDict != null && switchInfoDict.TryGetValue(info.name, out SwitchInfo switchInfo) && switchInfo != null)
+            SimpleXmlDictionary<string, SwitchInfo> switchInfoDictGlobal = null;
+            SwitchInfo switchInfo = null;
+            if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) && ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false)) && switchInfo != null)
             {
                 return switchInfo.CachedTree;
             }

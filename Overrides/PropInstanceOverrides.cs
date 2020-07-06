@@ -66,13 +66,17 @@ namespace Klyte.PropSwitcher.Overrides
         public static PropInfo GetTargetInfo(PropInfo info, InstanceID id) => GetTargetInfo_internal(info, id);
         private static PropInfo GetTargetInfo_internal(PropInfo info, InstanceID id = default)
         {
+            if (info == null || PSPropData.Instance?.Entries == null)
+            {
+                return info;
+            }
             string parentName = null;
             if (id.NetSegment != 0)
             {
                 parentName = NetManager.instance.m_segments.m_buffer[id.NetSegment].Info.name;
 
             }
-            if (id.NetNode != 0)
+            else if (id.NetNode != 0)
             {
                 parentName = NetManager.instance.m_nodes.m_buffer[id.NetNode].Info.name;
 
@@ -87,7 +91,10 @@ namespace Klyte.PropSwitcher.Overrides
                 parentName = BuildingManager.instance.m_buildings.m_buffer[id.Building].Info.name;
 
             }
-            if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) || (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDict) ?? false)) && switchInfoDict != null && switchInfoDict.TryGetValue(info.name, out SwitchInfo switchInfo) && switchInfo != null)
+
+            SimpleXmlDictionary<string, SwitchInfo> switchInfoDictGlobal = null;
+            SwitchInfo switchInfo = null;
+            if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) && ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false)) && switchInfo != null)
             {
                 return switchInfo.CachedProp;
             }

@@ -9,6 +9,8 @@ namespace Klyte.PropSwitcher.Xml
 
         private PropInfo m_cachedPropInfo;
         private string m_lastTryTargetProp;
+        [XmlIgnore]
+        internal string m_fileSource;
 
         public PropInfo CachedProp
         {

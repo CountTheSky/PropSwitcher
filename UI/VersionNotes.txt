@@ -11,3 +11,12 @@ Check the workshop page (second button on bottom buttons strip) for more informa
 <color cyan><sprite K45_ACE_Icon> Asset Color Expander mod users:</color>  isn't working as expected with this mod until it get updated at least to version 1.0.1. Until there, the rules will be applied like the prop was the original one, not the switched. The update must be released soon. <color yellow>Ignore this note if it's already updated to 1.0.1 or higher! (or if you don't use that mod)</color>
 
 <color cyan><sprite K45_KWTSIcon> Write the Signs mod users:</color> props layouts WILL NOT be affected by this mod, so you will need to edit layouts with undesired prop models... 
+
+<color yellow>UPDATE r1 (06/JUL/20)</color>
+	- Fixed: Throwing exception if try to remove trees
+	- Fixed: Throwing exception sometimes when loading a city
+	- Fixed: Custom props when selected in "to replace" field show trees instead of props in the list of available replacement
+	- Changed Behavior: Now allow replace a prop/tree by itself (useful to override global files)
+	- Added to buildings and networks list also the Global Configurations from files:
+		- <color green>GREEN if active</color>
+		- <color red>RED if overriden in the savegame</color>

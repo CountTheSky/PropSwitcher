@@ -301,7 +301,7 @@ namespace Klyte.PropSwitcher.UI
 
         private void OnAddRule()
         {
-            if (m_in.text.IsNullOrWhiteSpace() || m_in.text == m_out.text)
+            if (m_in.text.IsNullOrWhiteSpace())
             {
                 K45DialogControl.ShowModal(new K45DialogControl.BindProperties
                 {
@@ -321,8 +321,6 @@ namespace Klyte.PropSwitcher.UI
             {
                 RenderManager.instance.UpdateGroups(i);
             }
-            m_in.text = "";
-            m_out.text = "";
             UpdateDetoursList();
 
         }
@@ -345,8 +343,8 @@ namespace Klyte.PropSwitcher.UI
             {
                 return new string[0];
             }
-            return (PropSwitcherMod.Controller.PropsLoaded.ContainsValue(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
-                .Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
+            return (PropSwitcherMod.Controller.PropsLoaded.ContainsKey(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
+                //.Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
                 .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
@@ -356,6 +354,7 @@ namespace Klyte.PropSwitcher.UI
         private string GetCurrentValueIn() => "";
         private string OnChangeValueIn(int arg1, string[] arg2)
         {
+            m_out.text = "";
             if (arg1 >= 0 && arg1 < arg2.Length)
             {
                 return arg2[arg1];
@@ -369,7 +368,7 @@ namespace Klyte.PropSwitcher.UI
         private string[] OnChangeFilterIn(string arg) =>
             PropSwitcherMod.Controller.PropsLoaded
             .Union(PropSwitcherMod.Controller.TreesLoaded)
-            .Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
+            .Where(x => PSPropData.Instance.Entries.Values.Where(y => y.TargetPrefab == x.Value).Count() == 0)
                 .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
