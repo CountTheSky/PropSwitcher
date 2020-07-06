@@ -1,4 +1,4 @@
-﻿<color #FF8800>Welcome to Prop Switcher!</color>
+﻿<k45ExtraParam largeWindow><color #FF8800>Welcome to Prop Switcher!</color>
 
 This mod will allow you to switch props and trees in roads, buildings or the whole city. But remember: Trees can only be replaced by trees, same for props!
 
@@ -15,8 +15,9 @@ Check the workshop page (second button on bottom buttons strip) for more informa
 <color yellow>UPDATE r1 (06/JUL/20)</color>
 	- Fixed: Throwing exception if try to remove trees
 	- Fixed: Throwing exception sometimes when loading a city
-	- Fixed: Custom props when selected in "to replace" field show trees instead of props in the list of available replacement
+	- Fixed: Custom props when selected in "target to replace" field show trees instead of props in the list of available replacement
 	- Changed Behavior: Now allow replace a prop/tree by itself (useful to override global files)
 	- Added to buildings and networks list also the Global Configurations from files:
 		- <color green>GREEN if active</color>
 		- <color red>RED if overriden in the savegame</color>
+	- Added typeable filters in the replacement list (by target to replace, replacement) and also a dropdown to filter rule source (for networks and buildings) 

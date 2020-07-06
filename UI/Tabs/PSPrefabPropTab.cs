@@ -7,6 +7,7 @@ using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Libraries;
 using Klyte.PropSwitcher.Xml;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -32,6 +33,10 @@ namespace Klyte.PropSwitcher.UI
 
         private UIPanel m_actionBar;
         private UIButton m_addButton;
+        private UITextField m_filterIn;
+        private UITextField m_filterOut;
+        private UIPanel m_filterRow;
+        private UIDropDown m_filterSource;
 
         protected void Awake()
         {
@@ -70,6 +75,12 @@ namespace Klyte.PropSwitcher.UI
             m_titleRow.wrapLayout = false;
             m_titleRow.autoLayoutDirection = LayoutDirection.Horizontal;
 
+            KlyteMonoUtils.CreateUIElement(out m_filterRow, layoutPanel.transform, "filterRow", new UnityEngine.Vector4(0, 0, listContainerWidth, 25));
+            m_filterRow.autoLayout = true;
+            m_filterRow.wrapLayout = false;
+            m_filterRow.autoLayoutDirection = LayoutDirection.Horizontal;
+            CreateFilterPlaceHolder(listContainerWidth - 20, m_filterRow, out m_filterIn, out m_filterOut, out m_filterSource);
+
             CreateRowPlaceHolder(listContainerWidth - 20, m_titleRow, out UILabel col1Title, out UILabel col2Title, out UILabel col3Title);
             KlyteMonoUtils.LimitWidthAndBox(col1Title, col1Title.width, true);
             KlyteMonoUtils.LimitWidthAndBox(col2Title, col2Title.width, true);
@@ -90,6 +101,34 @@ namespace Klyte.PropSwitcher.UI
 
 
             UpdateDetoursList();
+        }
+
+        private void CreateFilterPlaceHolder(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut, out UIDropDown filterSource)
+        {
+            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.UiTextFieldDefaultsForm(filterIn);
+            filterIn.minimumSize = new Vector2(0, 25);
+            filterIn.verticalAlignment = UIVerticalAlignment.Middle;
+            filterIn.eventTextChanged += (x, y) => UpdateDetoursList();
+            filterIn.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
+            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.UiTextFieldDefaultsForm(fillterOut);
+            fillterOut.minimumSize = new Vector2(0, 25);
+            fillterOut.verticalAlignment = UIVerticalAlignment.Middle;
+            fillterOut.eventTextChanged += (x, y) => UpdateDetoursList();
+            fillterOut.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
+
+            filterSource = UIHelperExtension.CloneBasicDropDownNoLabel(Enum.GetNames(typeof(SourceFilterOptions)).Select(x => Locale.Get("K45_PS_FILTERSOURCEITEM", x)).ToArray(), (x) => UpdateDetoursList(), panel);
+            filterSource.area = new Vector4(0, 0, targetWidth * 0.2f, 28);
+            filterSource.textScale = 1;
+            filterSource.zOrder = 2;
+        }
+
+        private enum SourceFilterOptions
+        {
+            ALL,
+            GLOBAL,
+            SAVEGAME
         }
 
         private void OnReloadFiles()
@@ -252,12 +291,21 @@ namespace Klyte.PropSwitcher.UI
             m_btnDelete.isVisible = isEditable;
             m_btnExport.isVisible = isEditable;
             m_titleRow.isVisible = isEditable;
+            m_filterRow.isVisible = isEditable;
 
 
             if (isEditable)
             {
-                var keyListLocal = currentEditingSelection?.Select(x => Tuple.New(x.Key, x.Value)).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.First == y.Value).FirstOrDefault().Key ?? x.First).ToArray() ?? new Tuple<string, SwitchInfo>[0];
-                var keyListGlobal = globalCurrentEditingSelection?.Select(x => Tuple.New(x.Key, x.Value)).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.First == y.Value).FirstOrDefault().Key ?? x.First).ToArray() ?? new Tuple<string, SwitchInfo>[0];
+                var keyListLocal = currentEditingSelection?.Where(x =>
+                            m_filterSource.selectedIndex != (int)SourceFilterOptions.GLOBAL 
+                         && (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
+                         && (m_filterOut.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterOut.text, x.Value.TargetPrefab)))
+                    .Select(x => Tuple.New(x.Key, x.Value)).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.First == y.Value).FirstOrDefault().Key ?? x.First).ToArray() ?? new Tuple<string, SwitchInfo>[0];
+                var keyListGlobal = globalCurrentEditingSelection?.Where(x =>
+                            m_filterSource.selectedIndex != (int)SourceFilterOptions.SAVEGAME
+                         && (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
+                         && (m_filterOut.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterOut.text, x.Value.TargetPrefab)))
+                    .Select(x => Tuple.New(x.Key, x.Value)).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.First == y.Value).FirstOrDefault().Key ?? x.First).ToArray() ?? new Tuple<string, SwitchInfo>[0];
                 m_listItems.SetItemCount(keyListLocal.Length + keyListGlobal.Length);
                 BuildItems(keyListGlobal, 0, true, keyListLocal);
                 BuildItems(keyListLocal, keyListGlobal.Length, false);
@@ -266,6 +314,8 @@ namespace Klyte.PropSwitcher.UI
             }
 
         }
+        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
+
 
         private void BuildItems(Tuple<string, SwitchInfo>[] keyList, int offset, bool isGlobal, Tuple<string, SwitchInfo>[] localList = null)
         {
