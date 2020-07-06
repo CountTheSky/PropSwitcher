@@ -8,7 +8,7 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-[assembly: AssemblyVersion("1.0.0.*")]
+[assembly: AssemblyVersion("1.0.0.1")]
 namespace Klyte.PropSwitcher
 {
     public class PropSwitcherMod : BasicIUserMod<PropSwitcherMod, PSController, PSPanel>

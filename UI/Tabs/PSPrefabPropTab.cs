@@ -23,8 +23,8 @@ namespace Klyte.PropSwitcher.UI
         internal const string DETOUR_ITEM_TEMPLATE = "K45_PS_TemplateDetourListItemPrefabParented";
         protected UITextField m_prefab;
         private UIPanel m_titleRow;
-        private UITextField m_in;
-        private UITextField m_out;
+        protected UITextField m_in;
+        protected UITextField m_out;
         private UIScrollablePanel m_detourList;
         private UITemplateList<UIPanel> m_listItems;
         private UIButton m_btnDelete;
@@ -66,6 +66,10 @@ namespace Klyte.PropSwitcher.UI
             m_addButton = uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule) as UIButton;
             m_prefab.eventTextSubmitted += (x, y) => UpdateDetoursList();
             popup.eventSelectedIndexChanged += (x, y) => UpdateDetoursList();
+
+            m_prefab.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
+            m_in.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
+            m_out.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
 
             AddButtonInEditorRow(m_prefab, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Dropper, EnablePickTool, Locale.Get("K45_PS_ENABLETOOLPICKER"), true, 30).zOrder = m_prefab.zOrder + 1;
 
@@ -169,6 +173,8 @@ namespace Klyte.PropSwitcher.UI
 
         private string OnChangeValuePrefab(int arg1, string[] arg2)
         {
+            m_in.text = "";
+            m_out.text = "";
             if (arg1 >= 0 && arg1 < arg2.Length)
             {
                 return arg2[arg1];
@@ -297,7 +303,7 @@ namespace Klyte.PropSwitcher.UI
             if (isEditable)
             {
                 var keyListLocal = currentEditingSelection?.Where(x =>
-                            m_filterSource.selectedIndex != (int)SourceFilterOptions.GLOBAL 
+                            m_filterSource.selectedIndex != (int)SourceFilterOptions.GLOBAL
                          && (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
                          && (m_filterOut.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterOut.text, x.Value.TargetPrefab)))
                     .Select(x => Tuple.New(x.Key, x.Value)).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.First == y.Value).FirstOrDefault().Key ?? x.First).ToArray() ?? new Tuple<string, SwitchInfo>[0];
@@ -307,17 +313,17 @@ namespace Klyte.PropSwitcher.UI
                          && (m_filterOut.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterOut.text, x.Value.TargetPrefab)))
                     .Select(x => Tuple.New(x.Key, x.Value)).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.First == y.Value).FirstOrDefault().Key ?? x.First).ToArray() ?? new Tuple<string, SwitchInfo>[0];
                 m_listItems.SetItemCount(keyListLocal.Length + keyListGlobal.Length);
-                BuildItems(keyListGlobal, 0, true, keyListLocal);
+                BuildItems(keyListGlobal, 0, true, currentEditingSelection);
                 BuildItems(keyListLocal, keyListGlobal.Length, false);
-                BuildItems(keyListGlobal, 0, true, keyListLocal);
+                BuildItems(keyListGlobal, 0, true, currentEditingSelection);
                 BuildItems(keyListLocal, keyListGlobal.Length, false);
             }
 
         }
-        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
+        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName == null ? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER") : prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
 
 
-        private void BuildItems(Tuple<string, SwitchInfo>[] keyList, int offset, bool isGlobal, Tuple<string, SwitchInfo>[] localList = null)
+        private void BuildItems(Tuple<string, SwitchInfo>[] keyList, int offset, bool isGlobal, Dictionary<string, SwitchInfo> localList = null)
         {
             for (int i = offset; i < offset + keyList.Length; i++)
             {
@@ -338,7 +344,7 @@ namespace Klyte.PropSwitcher.UI
 
                     currentItem.objectUserData = true;
                 }
-                var targetTextColor = isGlobal ? localList?.Where(x => x.First == currentData.First).FirstOrDefault() == default ? Color.green : Color.red : Color.white;
+                var targetTextColor = isGlobal ? (localList?.Where(x => x.Key == currentData.First).Count() ?? 0) == 0 ? Color.green : Color.red : Color.white;
 
                 currentItem.stringUserData = currentData.First;
 
@@ -477,6 +483,8 @@ namespace Klyte.PropSwitcher.UI
                 {
                     string infoName = BuildingManager.instance.m_buildings.m_buffer[x].Info.name;
                     m_prefab.text = PropSwitcherMod.Controller.BuildingsLoaded.Where(x => x.Value?.name == infoName).FirstOrDefault().Key ?? "";
+                    m_in.text = "";
+                    m_out.text = "";
                     UpdateDetoursList();
                 }
             };
@@ -499,6 +507,8 @@ namespace Klyte.PropSwitcher.UI
                 {
                     string infoName = NetManager.instance.m_segments.m_buffer[x].Info.name;
                     m_prefab.text = PropSwitcherMod.Controller.NetsLoaded.Where(x => x.Value?.name == infoName).FirstOrDefault().Key ?? "";
+                    m_in.text = "";
+                    m_out.text = "";
                     UpdateDetoursList();
                 }
             };

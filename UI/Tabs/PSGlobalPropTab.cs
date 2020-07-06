@@ -51,6 +51,8 @@ namespace Klyte.PropSwitcher.UI
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
             uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule);
+            m_in.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
+            m_out.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
 
             float listContainerWidth = layoutPanel.width - 20;
             KlyteMonoUtils.CreateUIElement(out UIPanel titleRow, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, listContainerWidth, 25));
@@ -380,7 +382,7 @@ namespace Klyte.PropSwitcher.UI
                 .ToArray();
         }
 
-        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
+        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName == null ? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER") : prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
         private string GetCurrentValueIn() => "";
         private string OnChangeValueIn(int arg1, string[] arg2)
         {
