@@ -115,6 +115,7 @@ namespace Klyte.PropSwitcher.UI
         {
             private UIPanel m_panel;
             private UILabel m_to;
+            private UILabel m_rotationOffset;
             private UIPanel m_actionsPanel;
             private UIButton m_removeButton;
             private UIButton m_questionMark;
@@ -133,11 +134,16 @@ namespace Klyte.PropSwitcher.UI
 
 
                 var uiHelper = new UIHelperExtension(m_panel, LayoutDirection.Horizontal);
-                KlyteMonoUtils.CreateUIElement(out m_to, m_panel.transform, "ToLbl", new Vector4(0, 0, m_panel.width * 0.666f, 28));
+                KlyteMonoUtils.CreateUIElement(out m_to, m_panel.transform, "ToLbl", new Vector4(0, 0, m_panel.width * 0.6f, 28));
                 m_to.minimumSize = new Vector2(0, 28);
                 m_to.verticalAlignment = UIVerticalAlignment.Middle;
                 m_to.textAlignment = UIHorizontalAlignment.Center;
-                KlyteMonoUtils.CreateUIElement(out m_actionsPanel, m_panel.transform, "ActionsPanel", new Vector4(0, 0, m_panel.width * 0.333f, 28));
+                KlyteMonoUtils.CreateUIElement(out m_rotationOffset, m_panel.transform, "RotLbl", new Vector4(0, 0, m_panel.width * 0.1f, 28));
+                m_rotationOffset.minimumSize = new Vector2(0, 28);
+                m_rotationOffset.verticalAlignment = UIVerticalAlignment.Middle;
+                m_rotationOffset.textAlignment = UIHorizontalAlignment.Center;
+                m_rotationOffset.suffix = "°";
+                KlyteMonoUtils.CreateUIElement(out m_actionsPanel, m_panel.transform, "ActionsPanel", new Vector4(0, 0, m_panel.width * 0.3f, 28));
                 m_actionsPanel.minimumSize = new Vector2(0, 28);
 
                 m_actionsPanel.autoLayout = true;
@@ -151,7 +157,8 @@ namespace Klyte.PropSwitcher.UI
                 KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_gotoFile, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Load, null, "K45_PS_GLOBALCONFIGURATION_GOTOFILE", 22);
                 m_gotoFile.name = "GoToFile";
 
-                KlyteMonoUtils.LimitWidthAndBox(m_to, m_panel.width * 0.666f, true);
+                KlyteMonoUtils.LimitWidthAndBox(m_to, m_panel.width * 0.6f, true);
+                KlyteMonoUtils.LimitWidthAndBox(m_rotationOffset, m_panel.width * 0.1f, true);
                 m_removeButton.eventClicked += OnRemoveDetour;
                 m_questionMark.Disable();
                 m_gotoFile.eventClicked += OnGoToGlobalFile;
@@ -190,6 +197,9 @@ namespace Klyte.PropSwitcher.UI
                 m_to.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => targetItem.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetItem.TargetPrefab ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.tooltip = targetItem.TargetPrefab != null ? targetItem.TargetPrefab + (PrefabUtils.instance.AuthorList.TryGetValue(targetItem.TargetPrefab?.Split('.')[0], out string author) ? "\n" + author : "") : Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.textColor = textColor;
+
+                m_rotationOffset.text = targetItem.RotationOffset.ToString("G3");
+                m_rotationOffset.textColor = textColor;
 
                 m_gotoFile.isVisible = isGlobal;
                 m_questionMark.isVisible = isGlobal;

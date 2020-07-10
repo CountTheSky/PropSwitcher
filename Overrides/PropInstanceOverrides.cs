@@ -7,6 +7,7 @@ using Klyte.PropSwitcher.Xml;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Emit;
+using UnityEngine;
 
 namespace Klyte.PropSwitcher.Overrides
 {
@@ -139,7 +140,7 @@ namespace Klyte.PropSwitcher.Overrides
                     infoItem = switchInfo.SwitchItems[r.Int32((uint)switchInfo.SwitchItems.Length)];
                 }
 
-                angle += infoItem.RotationOffset;
+                angle += infoItem.RotationOffset * Mathf.Deg2Rad;
             }
         }
     }

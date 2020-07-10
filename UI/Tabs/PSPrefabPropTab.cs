@@ -24,6 +24,7 @@ namespace Klyte.PropSwitcher.UI
         private UIPanel m_titleRow;
         protected UITextField m_in;
         protected UITextField m_out;
+        protected UITextField m_rotationOffset;
         private UIScrollablePanel m_detourList;
         private UITemplateList<UIPanel> m_listItems;
         private UIButton m_btnDelete;
@@ -62,6 +63,9 @@ namespace Klyte.PropSwitcher.UI
             AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterPrefab, GetCurrentValuePrefab, OnChangeValuePrefab);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
+            AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
+            this.m_rotationOffset = m_rotationOffset[0];
+            Destroy(m_rotationOffset[1]);
             m_addButton = uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule) as UIButton;
             m_prefab.eventTextSubmitted += (x, y) => UpdateDetoursList();
             popup.eventSelectedIndexChanged += (x, y) => UpdateDetoursList();
@@ -84,13 +88,15 @@ namespace Klyte.PropSwitcher.UI
             m_filterRow.autoLayoutDirection = LayoutDirection.Horizontal;
             CreateFilterPlaceHolder(listContainerWidth - 20, m_filterRow, out m_filterIn, out m_filterOut, out m_filterSource);
 
-            CreateRowPlaceHolder(listContainerWidth - 20, m_titleRow, out UILabel col1Title, out UILabel col2Title, out UILabel col3Title);
+            CreateRowPlaceHolder(listContainerWidth - 20, m_titleRow, out UILabel col1Title, out UILabel col2Title, out UILabel col3Title, out UILabel col4Title);
             KlyteMonoUtils.LimitWidthAndBox(col1Title, col1Title.width, true);
             KlyteMonoUtils.LimitWidthAndBox(col2Title, col2Title.width, true);
             KlyteMonoUtils.LimitWidthAndBox(col3Title, col3Title.width, true);
+            KlyteMonoUtils.LimitWidthAndBox(col4Title, col4Title.width, true);
             col1Title.text = Locale.Get("K45_PS_SWITCHFROM_TITLE");
             col2Title.text = Locale.Get("K45_PS_SWITCHTO_TITLE");
-            col3Title.text = Locale.Get("K45_PS_ACTIONS_TITLE");
+            col3Title.text = Locale.Get("K45_PS_ROTATION_TITLE");
+            col4Title.text = Locale.Get("K45_PS_ACTIONS_TITLE");
 
             KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "previewPanel", new UnityEngine.Vector4(0, 0, listContainerWidth, 370));
 
@@ -109,13 +115,13 @@ namespace Klyte.PropSwitcher.UI
 
         private void CreateFilterPlaceHolder(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut, out UIDropDown filterSource)
         {
-            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.38f, 25));
             KlyteMonoUtils.UiTextFieldDefaultsForm(filterIn);
             filterIn.minimumSize = new Vector2(0, 25);
             filterIn.verticalAlignment = UIVerticalAlignment.Middle;
             filterIn.eventTextChanged += (x, y) => UpdateDetoursList();
             filterIn.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
-            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.38f, 25));
             KlyteMonoUtils.UiTextFieldDefaultsForm(fillterOut);
             fillterOut.minimumSize = new Vector2(0, 25);
             fillterOut.verticalAlignment = UIVerticalAlignment.Middle;
@@ -123,7 +129,7 @@ namespace Klyte.PropSwitcher.UI
             fillterOut.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
 
             filterSource = UIHelperExtension.CloneBasicDropDownNoLabel(Enum.GetNames(typeof(SourceFilterOptions)).Select(x => Locale.Get("K45_PS_FILTERSOURCEITEM", x)).ToArray(), (x) => UpdateDetoursList(), panel);
-            filterSource.area = new Vector4(0, 0, targetWidth * 0.2f, 28);
+            filterSource.area = new Vector4(0, 0, targetWidth * 0.24f, 28);
             filterSource.textScale = 1;
             filterSource.zOrder = 2;
         }
@@ -148,6 +154,7 @@ namespace Klyte.PropSwitcher.UI
         {
             m_in.text = "";
             m_out.text = "";
+            m_rotationOffset.text = "0.000";
             if (arg1 >= 0 && arg1 < arg2.Length)
             {
                 return arg2[arg1];
@@ -221,32 +228,24 @@ namespace Klyte.PropSwitcher.UI
 
 
 
-        private static void CreateRowPlaceHolder<C>(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out C actionsContainer) where C : UIComponent
+        private static void CreateRowPlaceHolder(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out UILabel column3, out UILabel actionsContainer)
         {
-            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.38f, 25));
             column1.minimumSize = new Vector2(0, 25);
             column1.verticalAlignment = UIVerticalAlignment.Middle;
             column1.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * 0.4f, 25));
+            KlyteMonoUtils.CreateUIElement(out column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * 0.38f, 25));
             column2.minimumSize = new Vector2(0, 25);
             column2.verticalAlignment = UIVerticalAlignment.Middle;
             column2.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "ActionsPanel", new Vector4(0, 0, targetWidth * 0.175f, 25));
+            KlyteMonoUtils.CreateUIElement(out column3, panel.transform, "RotLbl", new Vector4(0, 0, targetWidth * 0.06f, 25));
+            column3.minimumSize = new Vector2(0, 25);
+            column3.verticalAlignment = UIVerticalAlignment.Middle;
+            column3.textAlignment = UIHorizontalAlignment.Center;
+            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "ActionsPanel", new Vector4(0, 0, targetWidth * 0.18f, 25));
             actionsContainer.minimumSize = new Vector2(0, 25);
-        }
-
-        private void OnRemoveDetour(UIComponent component, UIMouseEventParameter eventParam)
-        {
-            if (PSPropData.Instance.PrefabChildEntries.TryGetValue(GetCurrentTargetPrefab()?.name ?? "", out SimpleXmlDictionary<string, SwitchInfo> currentEditingSelection))
-            {
-                currentEditingSelection.Remove(component.parent.parent.stringUserData);
-
-                for (int i = 0; i < 32; i++)
-                {
-                    RenderManager.instance.UpdateGroups(i);
-                }
-            }
-            UpdateDetoursList();
+            actionsContainer.verticalAlignment = UIVerticalAlignment.Middle;
+            actionsContainer.textAlignment = UIHorizontalAlignment.Center;
         }
 
 
@@ -257,6 +256,7 @@ namespace Klyte.PropSwitcher.UI
             PropSwitcherMod.Controller.GlobalPrefabChildEntries.TryGetValue(GetCurrentTargetPrefab()?.name ?? "", out SimpleXmlDictionary<string, SwitchInfo> globalCurrentEditingSelection);
             m_in.parent.isVisible = isEditable;
             m_out.parent.isVisible = isEditable;
+            m_rotationOffset.parent.isVisible = isEditable;
             m_addButton.isVisible = isEditable;
             m_detourList.parent.isVisible = isEditable;
             m_btnDelete.isVisible = isEditable;
@@ -297,14 +297,6 @@ namespace Klyte.PropSwitcher.UI
             }
         }
 
-        private void OnGoToGlobalFile(UIComponent component, UIMouseEventParameter eventParam)
-        {
-            if (component.stringUserData != null)
-            {
-                Utils.OpenInFileBrowser(component.stringUserData);
-            }
-        }
-
         private void OnAddRule()
         {
             if ((GetCurrentTargetPrefab()?.name).IsNullOrWhiteSpace())
@@ -339,7 +331,7 @@ namespace Klyte.PropSwitcher.UI
                 PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText] = new Xml.SwitchInfo();
             }
 
-            PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText, 0f);
+            PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
 
             for (int i = 0; i < 32; i++)
             {
@@ -382,6 +374,7 @@ namespace Klyte.PropSwitcher.UI
         private string OnChangeValueIn(int arg1, string[] arg2)
         {
             m_out.text = "";
+            m_rotationOffset.text = "0.000";
             if (arg1 >= 0 && arg1 < arg2.Length)
             {
                 return arg2[arg1];
@@ -423,6 +416,7 @@ namespace Klyte.PropSwitcher.UI
                     m_prefab.text = PropSwitcherMod.Controller.BuildingsLoaded.Where(x => x.Value?.name == infoName).FirstOrDefault().Key ?? "";
                     m_in.text = "";
                     m_out.text = "";
+                    m_rotationOffset.text = "0.000";
                     UpdateDetoursList();
                 }
             };
@@ -447,6 +441,7 @@ namespace Klyte.PropSwitcher.UI
                     m_prefab.text = PropSwitcherMod.Controller.NetsLoaded.Where(x => x.Value?.name == infoName).FirstOrDefault().Key ?? "";
                     m_in.text = "";
                     m_out.text = "";
+                    m_rotationOffset.text = "0.000";
                     UpdateDetoursList();
                 }
             };
