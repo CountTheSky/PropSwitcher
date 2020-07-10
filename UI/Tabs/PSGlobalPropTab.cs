@@ -14,9 +14,8 @@ using static Klyte.Commons.UI.DefaultEditorUILib;
 
 namespace Klyte.PropSwitcher.UI
 {
-    public class PSGlobalPropTab : UICustomControl
+    public class PSGlobalPropTab : UICustomControl, IPSBaseTab
     {
-        internal const string DETOUR_ITEM_TEMPLATE = "K45_PS_TemplateDetourListItemGlobal";
         private UITextField m_in;
         private UITextField m_out;
         private UIScrollablePanel m_detourList;
@@ -77,11 +76,11 @@ namespace Klyte.PropSwitcher.UI
             KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "previewPanel", new UnityEngine.Vector4(0, 0, listContainerWidth, 420));
 
             KlyteMonoUtils.CreateScrollPanel(m_listContainer, out m_detourList, out _, m_listContainer.width - 20, m_listContainer.height);
-            m_detourList.backgroundSprite = "OptionsScrollbarTrack";
+            m_detourList.backgroundSprite = "GenericPanel";
             m_detourList.autoLayout = true;
             m_detourList.autoLayoutDirection = LayoutDirection.Vertical;
-            CreateTemplateDetourItem();
-            m_listItems = new UITemplateList<UIPanel>(m_detourList, DETOUR_ITEM_TEMPLATE);
+            PSSwitchEntry.CreateTemplateDetourItem(m_detourList.width);
+            m_listItems = new UITemplateList<UIPanel>(m_detourList, PSSwitchEntry.DETOUR_ITEM_TEMPLATE);
             UpdateDetoursList();
 
 
@@ -225,27 +224,6 @@ namespace Klyte.PropSwitcher.UI
 
         }
 
-        private void CreateTemplateDetourItem()
-        {
-            var targetWidth = m_detourList.width;
-            var go = new GameObject();
-            UIPanel panel = go.AddComponent<UIPanel>();
-            panel.size = new Vector2(targetWidth, 31);
-            panel.autoLayout = true;
-            panel.wrapLayout = false;
-            panel.autoLayoutDirection = LayoutDirection.Horizontal;
-            panel.autoLayoutPadding = new RectOffset(0, 0, 3, 3);
-
-
-            var uiHelper = new UIHelperExtension(panel, LayoutDirection.Horizontal);
-            CreateRowPlaceHolder(targetWidth, panel, out _, out _, out UIPanel actionsPanel);
-
-            KlyteMonoUtils.InitCircledButton(actionsPanel, out UIButton removeButton, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, null, "K45_PS_REMOVE_PROP_RULE", 22);
-            removeButton.name = "RemoveItem";
-
-            UITemplateUtils.GetTemplateDict()[DETOUR_ITEM_TEMPLATE] = panel;
-        }
-
         private static void CreateRowPlaceHolder<T>(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out T actionsContainer) where T : UIComponent
         {
             KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.4f, 25));
@@ -291,40 +269,16 @@ namespace Klyte.PropSwitcher.UI
         }
 
 
-        private void UpdateDetoursList()
+        public void UpdateDetoursList()
         {
             var keyList = PSPropData.Instance.Entries.Where(x =>
             (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
-            && (m_filterOut.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterOut.text, x.Value.TargetPrefab))
+            && (m_filterOut.text.IsNullOrWhiteSpace() || x.Value.SwitchItems.Any(z => CheckIfPrefabMatchesFilter(m_filterOut.text, z.TargetPrefab)))
             ).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.Key == y.Value).FirstOrDefault().Key ?? x.Key).ToArray();
-            UIPanel[] districtChecks = m_listItems.SetItemCount(keyList.Length);
+            UIPanel[] rows = m_listItems.SetItemCount(keyList.Length);
             for (int i = 0; i < keyList.Length; i++)
             {
-                UIPanel currentItem = m_listItems.items[i];
-                UILabel col1 = currentItem.Find<UILabel>("FromLbl");
-                UILabel col2 = currentItem.Find<UILabel>("ToLbl");
-                if (currentItem.objectUserData == null)
-                {
-                    KlyteMonoUtils.LimitWidthAndBox(col1, currentItem.parent.width * 0.4f, true);
-                    KlyteMonoUtils.LimitWidthAndBox(col2, currentItem.parent.width * 0.4f, true);
-                    UIButton removeButton = currentItem.Find<UIButton>("RemoveItem");
-                    removeButton.eventClicked += OnRemoveDetour;
-
-                    currentItem.objectUserData = true;
-                }
-
-                currentItem.stringUserData = keyList[i].Key;
-
-                col1.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => keyList[i].Key == y.Value).FirstOrDefault().Key ?? keyList[i].Key;
-                col1.tooltip = keyList[i].Key + (PrefabUtils.instance.AuthorList.TryGetValue(keyList[i].Key.Split('.')[0], out string author) ? "\n" + author : "");
-
-                var target = keyList[i].Value?.TargetPrefab;
-
-                col2.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => target == y.Value).FirstOrDefault().Key ?? target ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
-                col2.tooltip = target + (PrefabUtils.instance.AuthorList.TryGetValue(target.Split('.')[0], out author) ? "\n" + author : "");
-
-                currentItem.backgroundSprite = currentItem.zOrder % 2 == 0 ? "" : "InfoPanel";
-
+                rows[i].GetComponent<PSSwitchEntry>().SetData(null, keyList[i].Key, keyList[i].Value, Color.white, false);
             }
 
         }
@@ -346,7 +300,11 @@ namespace Klyte.PropSwitcher.UI
             _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out string inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
             _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out string outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
 
-            PSPropData.Instance.Entries[inText] = new Xml.SwitchInfo { TargetPrefab = m_out.text.IsNullOrWhiteSpace() ? null : outText };
+            if (!PSPropData.Instance.Entries.ContainsKey(inText))
+            {
+                PSPropData.Instance.Entries[inText] = new Xml.SwitchInfo();
+            }
+            PSPropData.Instance.Entries[inText].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText, 0f);
 
             for (int i = 0; i < 32; i++)
             {
@@ -400,11 +358,11 @@ namespace Klyte.PropSwitcher.UI
         private string[] OnChangeFilterIn(string arg) =>
             PropSwitcherMod.Controller.PropsLoaded
             .Union(PropSwitcherMod.Controller.TreesLoaded)
-            .Where(x => PSPropData.Instance.Entries.Values.Where(y => y.TargetPrefab == x.Value).Count() == 0)
+            .Where(x => PSPropData.Instance.Entries.Values.Where(y => y.SwitchItems.Any(z => z.TargetPrefab == x.Value)).Count() == 0)
                 .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
-
+        public SimpleXmlDictionary<string, SwitchInfo> TargetDictionary(string prefabName) => PSPropData.Instance.Entries;
     }
 }

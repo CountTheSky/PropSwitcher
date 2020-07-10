@@ -1,4 +1,5 @@
-﻿using Harmony;
+﻿using ColossalFramework.Math;
+using Harmony;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
@@ -179,17 +180,43 @@ namespace Klyte.PropSwitcher.Overrides
             }
             SimpleXmlDictionary<string, SwitchInfo> switchInfoDictGlobal = null;
             SwitchInfo switchInfo = null;
+            SwitchInfo.Item infoItem = null;
             if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) && ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false)) && switchInfo != null)
             {
-                return switchInfo.CachedTree;
+                TryApplyInfo(ref id, switchInfo, ref infoItem);
+                if (infoItem != null)
+                {
+                    return infoItem.CachedTree;
+                }
             }
 
             if (PSPropData.Instance.Entries.ContainsKey(info.name))
             {
-                info = PSPropData.Instance.Entries[info.name].CachedTree;
+                switchInfo = PSPropData.Instance.Entries[info.name];
+                TryApplyInfo(ref id, switchInfo, ref infoItem);
+                if (infoItem != null)
+                {
+                    return infoItem.CachedTree;
+                }
             }
 
             return info;
+        }
+
+        private static void TryApplyInfo(ref InstanceID id, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem)
+        {
+            if (switchInfo.SwitchItems.Length > 0)
+            {
+                if (switchInfo.SwitchItems.Length == 1)
+                {
+                    infoItem = switchInfo.SwitchItems[0];
+                }
+                else
+                {
+                    var r = new Randomizer(id.Index);
+                    infoItem = switchInfo.SwitchItems[r.Int32((uint)switchInfo.SwitchItems.Length)];
+                }
+            }
         }
 
     }

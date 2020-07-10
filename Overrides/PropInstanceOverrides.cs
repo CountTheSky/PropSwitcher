@@ -1,4 +1,5 @@
-﻿using Harmony;
+﻿using ColossalFramework.Math;
+using Harmony;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
@@ -40,7 +41,7 @@ namespace Klyte.PropSwitcher.Overrides
 
         }
 
-        public static bool ApplySwitch(ref PropInfo info, ref InstanceID id) => (info = GetTargetInfo(info, id)) != null;
+        public static bool ApplySwitch(ref PropInfo info, ref InstanceID id, ref float angle) => (info = GetTargetInfo(info, ref id, ref angle)) != null;
         public static bool ApplySwitchGlobal(ref PropInfo info) => (info = GetTargetInfoWithoutId(info)) != null;
 
         public static IEnumerable<CodeInstruction> DetourRenederInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il)
@@ -62,9 +63,16 @@ namespace Klyte.PropSwitcher.Overrides
             return instrList;
         }
 
-        public static PropInfo GetTargetInfoWithoutId(PropInfo info) => GetTargetInfo_internal(info);
-        public static PropInfo GetTargetInfo(PropInfo info, InstanceID id) => GetTargetInfo_internal(info, id);
-        private static PropInfo GetTargetInfo_internal(PropInfo info, InstanceID id = default)
+        public static PropInfo GetTargetInfoWithoutId(PropInfo info)
+        {
+            InstanceID id = default;
+            float angle = 0;
+            return GetTargetInfo_internal(info, ref id, ref angle);
+        }
+
+        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle) => GetTargetInfo_internal(info, ref id, ref angle);
+
+        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle)
         {
             if (info == null || PSPropData.Instance?.Entries == null)
             {
@@ -94,18 +102,45 @@ namespace Klyte.PropSwitcher.Overrides
 
             SimpleXmlDictionary<string, SwitchInfo> switchInfoDictGlobal = null;
             SwitchInfo switchInfo = null;
+            SwitchInfo.Item infoItem = null;
             if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) && ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false)) && switchInfo != null)
             {
-                return switchInfo.CachedProp;
+                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem);
+                if (infoItem != null)
+                {
+                    return infoItem.CachedProp;
+                }
             }
 
             if (PSPropData.Instance.Entries.ContainsKey(info.name))
             {
-                info = PSPropData.Instance.Entries[info.name].CachedProp;
+                switchInfo = PSPropData.Instance.Entries[info.name];
+                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem);
+                if (infoItem != null)
+                {
+                    return infoItem.CachedProp;
+                }
             }
 
             return info;
         }
 
+        private static void TryApplyInfo(ref InstanceID id, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem)
+        {
+            if (switchInfo.SwitchItems.Length > 0)
+            {
+                if (switchInfo.SwitchItems.Length == 1)
+                {
+                    infoItem = switchInfo.SwitchItems[0];
+                }
+                else
+                {
+                    var r = new Randomizer(id.Index);
+                    infoItem = switchInfo.SwitchItems[r.Int32((uint)switchInfo.SwitchItems.Length)];
+                }
+
+                angle += infoItem.RotationOffset;
+            }
+        }
     }
 }
