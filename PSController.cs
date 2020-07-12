@@ -106,7 +106,7 @@ namespace Klyte.PropSwitcher
         }
 
 
-        private static string GetListName<T>(T x) where T : PrefabInfo => (x?.name?.EndsWith("_Data") ?? false) ? $"{x?.GetLocalizedTitle()}" : x?.name ?? "";
+        private static string GetListName<T>(T x) where T : PrefabInfo => x is TreeInfo || (x?.name?.EndsWith("_Data") ?? false) ? $"{x?.GetLocalizedTitle()}" : x?.name ?? "";
 
         public SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> GlobalPrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>>();
         internal void ReloadPropGlobals()

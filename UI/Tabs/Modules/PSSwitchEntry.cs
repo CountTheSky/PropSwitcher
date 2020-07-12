@@ -95,7 +95,7 @@ namespace Klyte.PropSwitcher.UI
             m_currentFromSource = fromProp;
             m_parentPrefabName = parentPrefab;
 
-            m_from.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => fromProp == y.Value).FirstOrDefault().Key ?? fromProp;
+            m_from.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromProp == y.Value).FirstOrDefault().Key ?? fromProp;
             m_from.tooltip = fromProp + (PrefabUtils.instance.AuthorList.TryGetValue(fromProp.Split('.')[0], out string author) ? "\n" + author : "");
             m_from.textColor = textColor;
             m_from.minimumSize = new Vector2(m_from.minimumSize.x, 31 * targetInfo.SwitchItems.Length);
@@ -194,7 +194,7 @@ namespace Klyte.PropSwitcher.UI
             {
                 m_mainRow = parent;
                 m_currentPrefabTarget = targetItem.TargetPrefab;
-                m_to.text = PropSwitcherMod.Controller.PropsLoaded.Where(y => targetItem.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetItem.TargetPrefab ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+                m_to.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetItem.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetItem.TargetPrefab ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.tooltip = targetItem.TargetPrefab != null ? targetItem.TargetPrefab + (PrefabUtils.instance.AuthorList.TryGetValue(targetItem.TargetPrefab?.Split('.')[0], out string author) ? "\n" + author : "") : Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.textColor = textColor;
 
