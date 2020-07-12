@@ -7,5 +7,10 @@ namespace Klyte.PropSwitcher.UI
     {
         void UpdateDetoursList();
         SimpleXmlDictionary<string, SwitchInfo> TargetDictionary(string prefabName);
+        SimpleXmlDictionary<string, SwitchInfo> CreateTargetDictionary(string prefabName);
+
+        void SetCurrentLoadedData(string fromSource, SwitchInfo info);
+
+        void SetCurrentLoadedData(string fromSource, SwitchInfo info, string target);
     }
 }

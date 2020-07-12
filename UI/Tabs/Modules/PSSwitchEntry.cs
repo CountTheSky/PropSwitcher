@@ -22,6 +22,19 @@ namespace Klyte.PropSwitcher.UI
         private string m_parentPrefabName;
 
         private IPSBaseTab m_mainPanelController;
+
+        public IPSBaseTab MainPanelController
+        {
+            get {
+                if (m_mainPanelController == null)
+                {
+                    m_mainPanelController = GetComponentInParent<IPSBaseTab>();
+                }
+
+                return m_mainPanelController;
+            }
+        }
+
         public static void CreateTemplateDetourItem(float targetWidth)
         {
             if (!UITemplateUtils.GetTemplateDict().ContainsKey(PSSwitchEntry.DETOUR_ITEM_TEMPLATE))
@@ -43,6 +56,15 @@ namespace Klyte.PropSwitcher.UI
             m_panel.autoFitChildrenVertically = true;
             m_panel.autoLayoutDirection = LayoutDirection.Horizontal;
             m_panel.autoLayoutPadding = new RectOffset(0, 0, 3, 3);
+            m_panel.eventClicked += (x, y) =>
+            {
+                if (!y.used)
+                {
+                    MainPanelController.SetCurrentLoadedData(m_currentFromSource, m_currentLoadedInfo);
+                    y.Use();
+                }
+
+            };
 
             new UIHelperExtension(m_panel, LayoutDirection.Horizontal);
 
@@ -54,7 +76,6 @@ namespace Klyte.PropSwitcher.UI
             KlyteMonoUtils.LimitWidthAndBox(m_from, m_panel.width * 0.4f, true);
 
         }
-        protected void Start() => m_mainPanelController = GetComponentInParent<IPSBaseTab>();
 
         private void CreateTemplateSubItem()
         {
@@ -109,7 +130,7 @@ namespace Klyte.PropSwitcher.UI
             m_panel.backgroundSprite = "OptionsScrollbarTrack";
         }
 
-        private void RemoveItself() => m_mainPanelController.TargetDictionary(m_parentPrefabName)?.Remove(m_currentFromSource);
+        private void RemoveItself() => MainPanelController.TargetDictionary(m_parentPrefabName)?.Remove(m_currentFromSource);
 
         public class PSSwitchEntrySubItem : UICustomControl
         {
@@ -120,6 +141,7 @@ namespace Klyte.PropSwitcher.UI
             private UIButton m_removeButton;
             private UIButton m_questionMark;
             private UIButton m_gotoFile;
+            private UIButton m_copyToCity;
             private string m_currentPrefabTarget;
             private PSSwitchEntry m_mainRow;
 
@@ -131,6 +153,14 @@ namespace Klyte.PropSwitcher.UI
                 m_panel.wrapLayout = false;
                 m_panel.autoLayoutDirection = LayoutDirection.Horizontal;
                 m_panel.autoLayoutPadding = new RectOffset(0, 0, 0, 3);
+                m_panel.eventClicked += (x, y) =>
+                {
+                    if (!y.used)
+                    {
+                        m_mainRow.MainPanelController.SetCurrentLoadedData(m_mainRow.m_currentFromSource, m_mainRow.m_currentLoadedInfo, m_currentPrefabTarget);
+                        y.Use();
+                    }
+                };
 
 
                 var uiHelper = new UIHelperExtension(m_panel, LayoutDirection.Horizontal);
@@ -149,22 +179,37 @@ namespace Klyte.PropSwitcher.UI
                 m_actionsPanel.autoLayout = true;
                 m_actionsPanel.autoLayoutPadding = new RectOffset(2, 2, 2, 2);
 
-                KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_removeButton, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, null, "K45_PS_REMOVE_PROP_RULE", 22);
+                KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_removeButton, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnRemoveDetour, "K45_PS_REMOVE_PROP_RULE", 22);
                 m_removeButton.name = "RemoveItem";
                 KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_questionMark, Commons.UI.SpriteNames.CommonsSpriteNames.K45_QuestionMark, null, "K45_PS_GLOBALCONFIGURATION_INFO", 22);
                 m_questionMark.disabledBgSprite = "";
                 m_questionMark.name = "AboutItemInformation";
-                KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_gotoFile, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Load, null, "K45_PS_GLOBALCONFIGURATION_GOTOFILE", 22);
+                KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_gotoFile, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Load, OnGoToGlobalFile, "K45_PS_GLOBALCONFIGURATION_GOTOFILE", 22);
                 m_gotoFile.name = "GoToFile";
+                KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_copyToCity, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Copy, OnCopyToCity, "K45_PS_GLOBALCONFIGURATION_COPYTOCITY", 22);
+                m_copyToCity.name = "GoToFile";
 
                 KlyteMonoUtils.LimitWidthAndBox(m_to, m_panel.width * 0.6f, true);
                 KlyteMonoUtils.LimitWidthAndBox(m_rotationOffset, m_panel.width * 0.1f, true);
-                m_removeButton.eventClicked += OnRemoveDetour;
                 m_questionMark.Disable();
-                m_gotoFile.eventClicked += OnGoToGlobalFile;
 
 
             }
+
+            private void OnCopyToCity(UIComponent component, UIMouseEventParameter eventParam)
+            {
+                LogUtils.DoWarnLog($"m_mainRow.MainPanelController = {m_mainRow?.MainPanelController}|m_mainRow.m_currentFromSource={m_mainRow?.m_currentFromSource}| m_mainRow.m_currentLoadedInfo ={m_mainRow?.m_currentLoadedInfo}");
+                (m_mainRow.MainPanelController.TargetDictionary(m_mainRow.m_parentPrefabName) ?? m_mainRow.MainPanelController.CreateTargetDictionary(m_mainRow.m_parentPrefabName))[m_mainRow.m_currentFromSource] = XmlUtils.DefaultXmlDeserialize<SwitchInfo>(XmlUtils.DefaultXmlSerialize(m_mainRow.m_currentLoadedInfo));
+                for (int i = 0; i < 32; i++)
+                {
+                    RenderManager.instance.UpdateGroups(i);
+                }
+
+                m_mainRow.MainPanelController.UpdateDetoursList();
+                eventParam.Use();
+
+            }
+
             private void OnRemoveDetour(UIComponent component, UIMouseEventParameter eventParam)
             {
                 m_mainRow.m_currentLoadedInfo.Remove(m_currentPrefabTarget);
@@ -179,7 +224,8 @@ namespace Klyte.PropSwitcher.UI
                     RenderManager.instance.UpdateGroups(i);
                 }
 
-                m_mainRow.m_mainPanelController.UpdateDetoursList();
+                m_mainRow.MainPanelController.UpdateDetoursList();
+                eventParam.Use();
             }
 
             private void OnGoToGlobalFile(UIComponent component, UIMouseEventParameter eventParam)
@@ -188,6 +234,7 @@ namespace Klyte.PropSwitcher.UI
                 {
                     Utils.OpenInFileBrowser(m_mainRow.m_currentLoadedInfo.m_fileSource);
                 }
+                eventParam.Use();
             }
 
             public void SetData(SwitchInfo.Item targetItem, Color textColor, bool isGlobal, PSSwitchEntry parent)
@@ -204,6 +251,7 @@ namespace Klyte.PropSwitcher.UI
                 m_gotoFile.isVisible = isGlobal;
                 m_questionMark.isVisible = isGlobal;
                 m_removeButton.isVisible = !isGlobal;
+                m_copyToCity.isVisible = isGlobal;
 
                 m_panel.backgroundSprite = m_panel.zOrder % 2 == 0 ? "" : "GenericPanelDark";
             }

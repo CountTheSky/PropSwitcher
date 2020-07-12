@@ -398,6 +398,15 @@ namespace Klyte.PropSwitcher.UI
         }
 
         public SimpleXmlDictionary<string, SwitchInfo> TargetDictionary(string prefabName) => PSPropData.Instance.PrefabChildEntries.TryGetValue(prefabName, out SimpleXmlDictionary<string, SwitchInfo> result) ? result : null;
+        public SimpleXmlDictionary<string, SwitchInfo> CreateTargetDictionary(string prefabName) => PSPropData.Instance.PrefabChildEntries[prefabName] = new SimpleXmlDictionary<string, SwitchInfo>();
+        public void SetCurrentLoadedData(string fromSource, SwitchInfo info) => SetCurrentLoadedData(fromSource, info, null);
+        public void SetCurrentLoadedData(string fromSource, SwitchInfo info, string target)
+        {
+            m_in.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromSource == y.Value).FirstOrDefault().Key ?? fromSource ?? "";
+            var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
+            m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
+            m_rotationOffset.text = targetSwitch.RotationOffset.ToString("F3");
+        }
     }
 
     public class PSBuildingPropTab : PSPrefabPropTab<BuildingInfo>

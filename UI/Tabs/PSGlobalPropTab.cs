@@ -363,5 +363,15 @@ namespace Klyte.PropSwitcher.UI
                 .OrderBy((x) => x)
                 .ToArray();
         public SimpleXmlDictionary<string, SwitchInfo> TargetDictionary(string prefabName) => PSPropData.Instance.Entries;
+        public SimpleXmlDictionary<string, SwitchInfo> CreateTargetDictionary(string prefabName) => TargetDictionary(prefabName);
+
+        public void SetCurrentLoadedData(string fromSource, SwitchInfo info) => SetCurrentLoadedData(fromSource, info, null);
+        public void SetCurrentLoadedData(string fromSource, SwitchInfo info, string target)
+        {
+            m_in.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromSource == y.Value).FirstOrDefault().Key ?? fromSource ?? "";
+            var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
+            m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
+            m_rotationOffset.text = targetSwitch.RotationOffset.ToString("F3");
+        }
     }
 }
