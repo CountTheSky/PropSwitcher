@@ -138,7 +138,8 @@ namespace Klyte.PropSwitcher.UI
         {
             ALL,
             GLOBAL,
-            SAVEGAME
+            SAVEGAME,
+            ACTIVE
         }
 
         private void OnReloadFiles()
@@ -275,7 +276,9 @@ namespace Klyte.PropSwitcher.UI
                 var keyListGlobal = globalCurrentEditingSelection?.Where(x =>
                             m_filterSource.selectedIndex != (int)SourceFilterOptions.SAVEGAME
                          && (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
-                         && (m_filterOut.text.IsNullOrWhiteSpace() || x.Value.SwitchItems.Any(z => CheckIfPrefabMatchesFilter(m_filterOut.text, z.TargetPrefab))))
+                         && (m_filterOut.text.IsNullOrWhiteSpace() || x.Value.SwitchItems.Any(z => CheckIfPrefabMatchesFilter(m_filterOut.text, z.TargetPrefab)))
+                         && (m_filterSource.selectedIndex != (int)SourceFilterOptions.ACTIVE || keyListLocal.Count(y => y.First == x.Key) == 0)
+                         )
                     .Select(x => Tuple.New(x.Key, x.Value)).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.First == y.Value).FirstOrDefault().Key ?? x.First).ToArray() ?? new Tuple<string, SwitchInfo>[0];
                 var rows = m_listItems.SetItemCount(keyListLocal.Length + keyListGlobal.Length);
                 BuildItems(ref rows, keyListGlobal, 0, true, currentEditingSelection);
