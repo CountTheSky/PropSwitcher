@@ -117,6 +117,7 @@ namespace Klyte.PropSwitcher.UI
             m_parentPrefabName = parentPrefab;
 
             m_from.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromProp == y.Value).FirstOrDefault().Key ?? fromProp;
+            m_from.suffix = targetInfo.SwitchItems.Length > 1 ? "\n" + Locale.Get("K45_PS_RANDOMIZEBY", targetInfo.SeedSource.ToString()) : "";
             m_from.tooltip = fromProp + (PrefabUtils.instance.AuthorList.TryGetValue(fromProp.Split('.')[0], out string author) ? "\n" + author : "");
             m_from.textColor = textColor;
             m_from.minimumSize = new Vector2(m_from.minimumSize.x, 31 * targetInfo.SwitchItems.Length);
@@ -245,6 +246,7 @@ namespace Klyte.PropSwitcher.UI
                 m_to.tooltip = targetItem.TargetPrefab != null ? targetItem.TargetPrefab + (PrefabUtils.instance.AuthorList.TryGetValue(targetItem.TargetPrefab?.Split('.')[0], out string author) ? "\n" + author : "") : Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.textColor = textColor;
 
+                m_rotationOffset.isVisible = targetItem.CachedProp != null;
                 m_rotationOffset.text = targetItem.RotationOffset.ToString("G3");
                 m_rotationOffset.textColor = textColor;
 

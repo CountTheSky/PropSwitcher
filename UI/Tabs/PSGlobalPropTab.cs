@@ -7,7 +7,6 @@ using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Libraries;
 using Klyte.PropSwitcher.Xml;
-using System;
 using System.Globalization;
 using System.Linq;
 using UnityEngine;
@@ -18,7 +17,7 @@ namespace Klyte.PropSwitcher.UI
 {
     public class PSGlobalPropTab : UICustomControl, IPSBaseTab
     {
-        private UIDropDown m_seedSource;
+        private UICheckBox m_seedSource;
         private UITextField m_in;
         private UITextField m_out;
         private UIScrollablePanel m_detourList;
@@ -52,7 +51,7 @@ namespace Klyte.PropSwitcher.UI
             var m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", false);
 
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
-            AddDropdown(Locale.Get("K45_PS_SEEDSOURCE"), out m_seedSource, uiHelper, Enum.GetNames(typeof(RandomizerSeedSource)).Select(x => Locale.Get("K45_PS_SEEDSOURCEITEM", x)).ToArray(), (x) => { });
+            AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, (x) => { });
             AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             this.m_rotationOffset = m_rotationOffset[0];
@@ -92,7 +91,7 @@ namespace Klyte.PropSwitcher.UI
             PSSwitchEntry.CreateTemplateDetourItem(m_detourList.width);
             m_listItems = new UITemplateList<UIPanel>(m_detourList, PSSwitchEntry.DETOUR_ITEM_TEMPLATE);
             UpdateDetoursList();
-
+            this.m_rotationOffset.parent.isVisible =false;
 
         }
 
@@ -308,7 +307,7 @@ namespace Klyte.PropSwitcher.UI
                 PSPropData.Instance.Entries[inText] = new Xml.SwitchInfo();
             }
             PSPropData.Instance.Entries[inText].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
-            PSPropData.Instance.Entries[inText].SeedSource = (RandomizerSeedSource)m_seedSource.selectedIndex;
+            PSPropData.Instance.Entries[inText].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
 
             for (int i = 0; i < 32; i++)
             {
@@ -345,16 +344,23 @@ namespace Klyte.PropSwitcher.UI
         }
 
         private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName == null ? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER") : prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
-        private string GetCurrentValueIn() => "";
+        private string GetCurrentValueIn()
+        {
+            m_rotationOffset.parent.isVisible = false;
+            return "";
+        }
+
         private string OnChangeValueIn(int arg1, string[] arg2)
         {
             m_out.text = "";
             if (arg1 >= 0 && arg1 < arg2.Length)
             {
+                m_rotationOffset.parent.isVisible = PropSwitcherMod.Controller.PropsLoaded.ContainsKey(arg2[arg1]);
                 return arg2[arg1];
             }
             else
             {
+                m_rotationOffset.parent.isVisible = false;
                 return "";
             }
         }
@@ -377,6 +383,8 @@ namespace Klyte.PropSwitcher.UI
             var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
             m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
             m_rotationOffset.text = targetSwitch.RotationOffset.ToString("F3");
+            m_seedSource.isChecked = info.SeedSource == RandomizerSeedSource.INSTANCE;
+            m_rotationOffset.parent.isVisible = PropSwitcherMod.Controller.PropsLoaded.ContainsKey(fromSource);
         }
     }
 }
