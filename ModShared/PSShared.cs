@@ -1,15 +1,14 @@
-﻿using Klyte.PropSwitcher.Data;
-using Klyte.PropSwitcher.Overrides;
-using Klyte.PropSwitcher.Xml;
+﻿using Klyte.PropSwitcher.Overrides;
+using UnityEngine;
 
 namespace Klyte.PropSwitcher.Shared
 {
     public static class PSShared
     {
-        public static PropInfo TranslateProp(PropInfo originalProp, ref InstanceID id)
+        public static PropInfo TranslateProp(PropInfo originalProp, ref InstanceID id, ref Vector3 position)
         {
             float angle = 0;
-            return PropInstanceOverrides.GetTargetInfo(originalProp, ref id, ref angle);
+            return PropInstanceOverrides.GetTargetInfo(originalProp, ref id, ref angle, ref position);
         }
     }
 

@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 using static Klyte.Commons.UI.DefaultEditorUILib;
+using static Klyte.PropSwitcher.Xml.SwitchInfo;
 
 namespace Klyte.PropSwitcher.UI
 {
@@ -22,6 +23,7 @@ namespace Klyte.PropSwitcher.UI
 
         protected UITextField m_prefab;
         private UIPanel m_titleRow;
+        private UIDropDown m_seedSource;
         protected UITextField m_in;
         protected UITextField m_out;
         protected UITextField m_rotationOffset;
@@ -62,6 +64,7 @@ namespace Klyte.PropSwitcher.UI
 
             AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterPrefab, GetCurrentValuePrefab, OnChangeValuePrefab);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
+            AddDropdown(Locale.Get("K45_PS_SEEDSOURCE"), out m_seedSource, uiHelper, Enum.GetNames(typeof(RandomizerSeedSource)).Select(x => Locale.Get("K45_PS_SEEDSOURCEITEM", x)).ToArray(), (x) => { });
             AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             this.m_rotationOffset = m_rotationOffset[0];
@@ -264,6 +267,7 @@ namespace Klyte.PropSwitcher.UI
             m_btnExport.isVisible = isEditable;
             m_titleRow.isVisible = isEditable;
             m_filterRow.isVisible = isEditable;
+            m_seedSource.parent.isVisible = isEditable;
 
 
             if (isEditable)
@@ -335,7 +339,7 @@ namespace Klyte.PropSwitcher.UI
             }
 
             PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
-
+            PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText].SeedSource = (RandomizerSeedSource)m_seedSource.selectedIndex;
             for (int i = 0; i < 32; i++)
             {
                 RenderManager.instance.UpdateGroups(i);
@@ -405,6 +409,7 @@ namespace Klyte.PropSwitcher.UI
         public void SetCurrentLoadedData(string fromSource, SwitchInfo info) => SetCurrentLoadedData(fromSource, info, null);
         public void SetCurrentLoadedData(string fromSource, SwitchInfo info, string target)
         {
+            m_seedSource.selectedIndex = (int)info.SeedSource;
             m_in.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromSource == y.Value).FirstOrDefault().Key ?? fromSource ?? "";
             var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
             m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";

@@ -24,6 +24,8 @@ namespace Klyte.PropSwitcher.Xml
         public Item[] SwitchItems { get; set; } = new Item[0];
         [XmlIgnore]
         internal string m_fileSource;
+        [XmlAttribute("seedSource")]
+        public RandomizerSeedSource SeedSource { get; set; }
 
         public class Item
         {
@@ -33,7 +35,6 @@ namespace Klyte.PropSwitcher.Xml
             public ushort WeightInDraws { get; set; }
             [XmlAttribute("rotationOffset")]
             public float RotationOffset { get; set; }
-
 
 
 
@@ -68,6 +69,12 @@ namespace Klyte.PropSwitcher.Xml
                     return m_cachedTreeInfo;
                 }
             }
+        }
+
+        public enum RandomizerSeedSource
+        {
+            INSTANCE,
+            POSITION
         }
 
         internal void Add(string newPrefab, float rotationOffset) => SwitchItems = SwitchItems.Where(x => x.TargetPrefab != newPrefab).Union(new Item[] { new Item { TargetPrefab = newPrefab, RotationOffset = rotationOffset } }).ToArray();

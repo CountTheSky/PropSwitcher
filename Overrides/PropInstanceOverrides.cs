@@ -42,7 +42,7 @@ namespace Klyte.PropSwitcher.Overrides
 
         }
 
-        public static bool ApplySwitch(ref PropInfo info, ref InstanceID id, ref float angle) => (info = GetTargetInfo(info, ref id, ref angle)) != null;
+        public static bool ApplySwitch(ref PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position) => (info = GetTargetInfo(info, ref id, ref angle, ref position)) != null;
         public static bool ApplySwitchGlobal(ref PropInfo info) => (info = GetTargetInfoWithoutId(info)) != null;
 
         public static IEnumerable<CodeInstruction> DetourRenederInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il)
@@ -68,12 +68,13 @@ namespace Klyte.PropSwitcher.Overrides
         {
             InstanceID id = default;
             float angle = 0;
-            return GetTargetInfo_internal(info, ref id, ref angle);
+            Vector3 vector3 = default;
+            return GetTargetInfo_internal(info, ref id, ref angle, ref vector3);
         }
 
-        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle) => GetTargetInfo_internal(info, ref id, ref angle);
+        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position) => GetTargetInfo_internal(info, ref id, ref angle, ref position);
 
-        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle)
+        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position)
         {
             if (info == null || PSPropData.Instance?.Entries == null)
             {
@@ -106,7 +107,7 @@ namespace Klyte.PropSwitcher.Overrides
             SwitchInfo.Item infoItem = null;
             if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) && ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false)) && switchInfo != null)
             {
-                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem);
+                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position);
                 if (infoItem != null)
                 {
                     return infoItem.CachedProp;
@@ -116,7 +117,7 @@ namespace Klyte.PropSwitcher.Overrides
             if (PSPropData.Instance.Entries.ContainsKey(info.name))
             {
                 switchInfo = PSPropData.Instance.Entries[info.name];
-                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem);
+                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position);
                 if (infoItem != null)
                 {
                     return infoItem.CachedProp;
@@ -126,7 +127,7 @@ namespace Klyte.PropSwitcher.Overrides
             return info;
         }
 
-        private static void TryApplyInfo(ref InstanceID id, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem)
+        private static void TryApplyInfo(ref InstanceID id, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 position)
         {
             if (switchInfo.SwitchItems.Length > 0)
             {
@@ -136,8 +137,11 @@ namespace Klyte.PropSwitcher.Overrides
                 }
                 else
                 {
-                    var r = new Randomizer(id.Index);
-                    infoItem = switchInfo.SwitchItems[r.Int32((uint)switchInfo.SwitchItems.Length)];
+                    var seed = switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION ? (int)(position.x + position.y + position.z) % 1000 : (int)id.Index;
+                    var r = new Randomizer(seed);
+                    var targetIdx = r.Int32((uint)switchInfo.SwitchItems.Length);
+                    //LogUtils.DoWarnLog($"seed =  {id.Index} +{(int)(position.x + position.y + position.z) % 100} = {seed} | targetIdx = {targetIdx} | position = {position}");
+                    infoItem = switchInfo.SwitchItems[targetIdx];
                 }
 
                 angle += infoItem.RotationOffset * Mathf.Deg2Rad;
