@@ -174,7 +174,6 @@
     <Compile Include="Data\PSPropData.cs" />
     <Compile Include="Lib\BasicLib.cs" />
     <Compile Include="ModShared\PSShared.cs" />
-    <Compile Include="Overrides\TreeInstanceOverrides.cs" />
     <Compile Include="Overrides\PropInstanceOverrides.cs" />
     <Compile Include="PropSwitcherMod.cs" />
     <Compile Include="PSController.cs" />
