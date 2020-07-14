@@ -36,8 +36,6 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(NetLane).GetMethod("RenderInstance", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_NetLane_RenderInstance"));
             AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_NetLane_PopulateGroupData"));
 
-            //AddRedirect(typeof(TreeInstance).GetProperty("Info").GetGetMethod(), GetType().GetMethod("PreTreeInstance_GetInfo"));
-            // AddRedirect(typeof(TreeInstance).GetProperty("GrowState").GetGetMethod(), GetType().GetMethod("PreTreeInstance_GrowState"));
 
 
             AddRedirect(typeof(TreeInstance).GetMethod("RenderInstance", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
@@ -48,17 +46,15 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(TreeInstance).GetMethod("TerrainUpdated", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
             AddRedirect(typeof(TreeInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
             AddRedirect(typeof(TreeInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("AfterTerrainUpdated", RedirectorUtils.allFlags), GetType().GetMethod("CheckValidTree"));
+            //         AddRedirect(typeof(TreeInstance).GetProperty("GrowState", RedirectorUtils.allFlags).GetGetMethod(), null, GetType().GetMethod("OverrideGrowState"));
 
         }
 
         public static bool ApplySwitchGlobal(ref TreeInfo info) => (info = GetTargetInfoWithoutId(info)) != null;
 
-        public static bool PreTreeInstance_GetInfo(ref TreeInstance __instance, ref TreeInfo __result)
-        {
-            __result = GetTargetInfoWithPosition(PrefabCollection<TreeInfo>.GetPrefab(__instance.m_infoIndex), __instance.Position);
-
-            return false;
-        }
+        public static bool CheckValidTree(ref TreeInstance __instance) => GetTargetInfoWithPosition(PrefabCollection<TreeInfo>.GetPrefab(__instance.m_infoIndex), __instance.Position) != null;
+        //   public static void OverrideGrowState(ref TreeInstance __instance, ref int __result) => __result *= (GetTargetInfoWithPosition(PrefabCollection<TreeInfo>.GetPrefab(__instance.m_infoIndex), __instance.Position) != null ? 1 : 0);
         //public static bool PreTreeInstance_GrowState(ref TreeInstance __instance, ref int result)
         //{
         //    result = GetTargetInfoWithPosition(PrefabCollection<TreeInfo>.GetPrefab(__instance.m_infoIndex), __instance.Position);
@@ -69,20 +65,38 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> DetourRenederInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
+            ProcessDetour(il, instrList, "GetTargetInfoWithPosition");
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
+        }
+
+        private static void ProcessDetour(ILGenerator il, List<CodeInstruction> instrList, string getMethod)
+        {
             for (int i = 0; i < instrList.Count; i++)
             {
                 if (instrList[i].operand == typeof(TreeInstance).GetProperty("Info", RedirectorUtils.allFlags).GetGetMethod())
                 {
+                    var localProp = il.DeclareLocal(typeof(TreeInfo));
+                    var labelCont = il.DefineLabel();
+                    var lastInstr = new CodeInstruction(OpCodes.Ldloc_S, localProp);
+                    lastInstr.labels.Add(labelCont);
                     instrList.InsertRange(i + 1, new List<CodeInstruction>{
-                        new CodeInstruction( OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoWithoutId",RedirectorUtils.allFlags)),
-                        });
+                        new CodeInstruction(OpCodes.Ldarg_0),
+                        new CodeInstruction(OpCodes.Call, typeof(TreeInstance).GetProperty("Position",RedirectorUtils.allFlags).GetGetMethod()),
+                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod(getMethod,RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Stloc_S,localProp),
+                        new CodeInstruction(OpCodes.Ldloc_S,localProp),
+                        new CodeInstruction(OpCodes.Ldnull),
+                        new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Brfalse,labelCont),
+                        new CodeInstruction(OpCodes.Ret),
+                        lastInstr,
+                        }); ;
                     i += 2;
                 }
 
             }
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
         }
 
         #region BuildingAI
@@ -394,7 +408,7 @@ namespace Klyte.PropSwitcher.Overrides
                 TryApplyInfo(ref id, switchInfo, ref infoItem, position);
                 if (infoItem != null)
                 {
-                    return infoItem.CachedTree ?? info;
+                    return infoItem.CachedTree;
                 }
             }
 
@@ -404,7 +418,7 @@ namespace Klyte.PropSwitcher.Overrides
                 TryApplyInfo(ref id, switchInfo, ref infoItem, position);
                 if (infoItem != null)
                 {
-                    return infoItem.CachedTree ?? info;
+                    return infoItem.CachedTree;
                 }
             }
 
