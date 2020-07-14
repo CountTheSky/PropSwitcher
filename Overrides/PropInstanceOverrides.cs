@@ -34,14 +34,14 @@ namespace Klyte.PropSwitcher.Overrides
                 AddRedirect(method, propSwitchMethod);
             }
             AddRedirect(typeof(PropInstance).GetMethod("TerrainUpdated", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Instance), propSwitchMethodGlobal);
-            AddRedirect(typeof(PropInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Instance), propSwitchMethod);
-            AddRedirect(objMethod, null, null, GetType().GetMethod("DetourRenederInstanceObj"));
+            AddRedirect(typeof(PropInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
             AddRedirect(typeof(PropInstance).GetMethod("UpdateProp", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
             AddRedirect(typeof(PropInstance).GetMethod("CheckOverlap", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
             AddRedirect(typeof(PropInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
 
 
-            AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_CalculatePropGroupData"));
+            AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_XxxxPropGroupData"));
+            AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_XxxxPropGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("CalculateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_CalculateGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_PopulateGroupData"));
         }
@@ -49,7 +49,7 @@ namespace Klyte.PropSwitcher.Overrides
 
 
         #region BuildingAI
-        public static IEnumerable<CodeInstruction> TranspileBuildingAI_CalculatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> TranspileBuildingAI_XxxxPropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
 
@@ -59,7 +59,6 @@ namespace Klyte.PropSwitcher.Overrides
                 {
                     instrList.RemoveAt(i);
                     instrList.InsertRange(i, new List<CodeInstruction>{
-                        new CodeInstruction(OpCodes.Ldloc_S,7),
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Ldarg_1),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculatePropGroupData",RedirectorUtils.allFlags)),
@@ -74,7 +73,7 @@ namespace Klyte.PropSwitcher.Overrides
             return instrList;
         }
 
-        public static PropInfo BuildingAI_CalculatePropGroupData(BuildingInfo.Prop prop, int j, BuildingAI buildingAI, ushort buildingID)
+        public static PropInfo BuildingAI_CalculatePropGroupData(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID)
         {
             var finalProp = prop.m_finalProp;
             if (finalProp == null)
@@ -85,7 +84,7 @@ namespace Klyte.PropSwitcher.Overrides
             ref Building buildingData = ref BuildingManager.instance.m_buildings.m_buffer[buildingID];
             Matrix4x4 matrix4x2 = default;
             matrix4x2.SetTRS(Building.CalculateMeshPosition(buildingAI.m_info, buildingData.m_position, buildingData.m_angle, buildingData.Length), Quaternion.AngleAxis(buildingData.m_angle * 57.29578f, Vector3.down), Vector3.one);
-            Vector3 vector2 = matrix4x2.MultiplyPoint(buildingAI.m_info.m_props[j].m_position);
+            Vector3 vector2 = matrix4x2.MultiplyPoint(prop.m_position);
 
             var id = new InstanceID { Building = buildingID };
             var angleDummy = 0f;
@@ -152,8 +151,8 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldloc_S,num2Idx),
                         new CodeInstruction(OpCodes.Ldloc_S,flagIdx),
                         new CodeInstruction(OpCodes.Ldarg_S,invertArgIdx),
-                  //      new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
-                    //    new CodeInstruction(OpCodes.Ldstr,sourceStr),
+                  //    new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
+                    //  new CodeInstruction(OpCodes.Ldstr,sourceStr),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_CalculateGroupData",RedirectorUtils.allFlags)),
                         new CodeInstruction(OpCodes.Stloc_S,localProp),
                         new CodeInstruction(OpCodes.Ldloc_S,localProp),
