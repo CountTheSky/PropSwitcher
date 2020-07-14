@@ -43,6 +43,7 @@ namespace Klyte.PropSwitcher.Overrides
 
             AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_CalculatePropGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("CalculateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_CalculateGroupData"));
+            AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_PopulateGroupData"));
         }
 
 
@@ -101,31 +102,85 @@ namespace Klyte.PropSwitcher.Overrides
         {
             var instrList = new List<CodeInstruction>(instr);
 
-            for (int i = 0; i < instrList.Count - 2; i++)
+            ProcessInstructions_NetLane(il, instrList, 1, 12, 8, 7, 11, 6, 10, 7, 2, 6);//, "Calculate");
+
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
+        }
+        public static IEnumerable<CodeInstruction> TranspileNetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        {
+            var instrList = new List<CodeInstruction>(instr);
+
+            ProcessInstructions_NetLane(il, instrList, 2, 20, 9, 11, 14, 6, 12, 7, 1, 9);//, "Populate");
+
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
+        }
+
+        private static void ProcessInstructions_NetLane(ILGenerator il, List<CodeInstruction> instrList, byte laneIdArgIdx, byte hasPropsIdx, int finalPropIdx, byte layerArgIdx, int variationIdx, int propIdx, int jIdx, int num2Idx, int flagIdx, int invertArgIdx)//, string sourceStr)
+        {
+            for (int i = 1; i < instrList.Count - 2; i++)
             {
-                if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder fi && fi.LocalIndex == 11)
+                if (instrList[i - 1].opcode == OpCodes.Ldarg_S && instrList[i - 1].operand is byte b && b == hasPropsIdx)
+                {
+                    instrList[i].opcode = OpCodes.Ldc_I4_0;
+                }
+
+                if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == finalPropIdx
+                    && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_prefabDataLayer"
+                    && instrList[i + 2].opcode == OpCodes.Ldarg_S && instrList[i + 2].operand is byte b1 && b1 == layerArgIdx
+                    && instrList[i + 3].opcode == OpCodes.Beq)
+                {
+                    instrList.RemoveRange(i, 8);
+                }
+
+                if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder fi && fi.LocalIndex == variationIdx)
                 {
                     var localProp = il.DeclareLocal(typeof(PropInfo));
+                    var localHasProp = il.DeclareLocal(typeof(bool));
                     var endloopLabel = il.DefineLabel();
+                    var lastInsertLabel = il.DefineLabel();
+                    var lastInsert = new CodeInstruction(OpCodes.Ldloc_S, localProp);
+                    lastInsert.labels.Add(lastInsertLabel);
 
                     instrList.InsertRange(i - 1, new List<CodeInstruction>{
-                        new CodeInstruction(OpCodes.Ldloc_S,6),
-                        new CodeInstruction(OpCodes.Ldloc_S,10),
-                        new CodeInstruction(OpCodes.Ldarg_1),
-                        new CodeInstruction(OpCodes.Ldloc_S,7),
-                        new CodeInstruction(OpCodes.Ldloc_2),
-                        new CodeInstruction(OpCodes.Ldarg_S,6),
+                        new CodeInstruction(OpCodes.Ldloc_S,propIdx),
+                        new CodeInstruction(OpCodes.Ldloc_S,jIdx),
+                        new CodeInstruction(OpCodes.Ldarg_S,laneIdArgIdx),
+                        new CodeInstruction(OpCodes.Ldloc_S,num2Idx),
+                        new CodeInstruction(OpCodes.Ldloc_S,flagIdx),
+                        new CodeInstruction(OpCodes.Ldarg_S,invertArgIdx),
+                  //      new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
+                    //    new CodeInstruction(OpCodes.Ldstr,sourceStr),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_CalculateGroupData",RedirectorUtils.allFlags)),
                         new CodeInstruction(OpCodes.Stloc_S,localProp),
                         new CodeInstruction(OpCodes.Ldloc_S,localProp),
                         new CodeInstruction(OpCodes.Ldnull),
                         new CodeInstruction( OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Stloc_S,localHasProp),
+                        new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
+                        new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
+                        new CodeInstruction(OpCodes.Ldind_U1),
+                        new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
+                        new CodeInstruction(OpCodes.Or),
+                        new CodeInstruction(OpCodes.Stind_I1),
+                        new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
                         new CodeInstruction( OpCodes.Brtrue,endloopLabel ),
                         new CodeInstruction(OpCodes.Ldloc_S,localProp),
+                        new CodeInstruction(OpCodes.Ldfld,typeof(PrefabInfo).GetField("m_prefabDataLayer",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
+                        new CodeInstruction(OpCodes.Beq,lastInsertLabel),
+                        new CodeInstruction(OpCodes.Ldloc_S,localProp),
+                        new CodeInstruction(OpCodes.Ldfld,typeof(PropInfo).GetField("m_effectLayer",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
+                        new CodeInstruction(OpCodes.Bne_Un,endloopLabel),
+                        lastInsert
                         });
                     while (i < instrList.Count)
                     {
-                        if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb && lb.LocalIndex == 10)
+                        if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb && lb.LocalIndex == jIdx)
                         {
                             instrList[i].labels.Add(endloopLabel);
                             break;
@@ -136,12 +191,9 @@ namespace Klyte.PropSwitcher.Overrides
                 }
 
             }
-
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
         }
-        public static PropInfo NetLane_CalculateGroupData(PropInfo finalInfo, NetLaneProps.Prop prop, int j, uint laneId, int num2, bool flag, bool invert)
+
+        public static PropInfo NetLane_CalculateGroupData(PropInfo finalInfo, NetLaneProps.Prop prop, int j, uint laneId, int num2, bool flag, bool invert)//, int layer, string source)
         {
             if (finalInfo == null)
             {
@@ -171,7 +223,7 @@ namespace Klyte.PropSwitcher.Overrides
             float num4 = num3 + (float)j / num2;
             Vector3 vector = thiz.m_bezier.Position(num4);
             //LogUtils.DoWarnLog($"thiz.m_bezier = {thiz.m_bezier.a} {thiz.m_bezier.b} {thiz.m_bezier.c} {thiz.m_bezier.d} | vector = {vector} | num4 = {num4} |num3 = {num3} |num2= {num2} |flag2 ={flag2}|prop.m_segmentOffset = {prop.m_segmentOffset}  (seg = {thiz.m_segment} | idx ={new InstanceID { NetSegment = thiz.m_segment }} | origProp = {finalInfo} | j = {j})");
-            Vector3 vector2 = default;// thiz.m_bezier.Tangent(num4);
+            Vector3 vector2 = thiz.m_bezier.Tangent(num4);
             if (vector2 != Vector3.zero)
             {
                 if (flag2)
@@ -220,13 +272,26 @@ namespace Klyte.PropSwitcher.Overrides
             var id = new InstanceID { NetSegment = thiz.m_segment };
             var angleDummy = 0f;
             var result = GetTargetInfo(finalInfo, ref id, ref angleDummy, ref vector);
-
+            //if (result != finalInfo)
+            //{
+            //    LogUtils.DoWarnLog($"s={thiz.m_segment}; l= {laneId}; j = {j}; vector = {vector}; src = {source}; layer = {layer};  finalInfo = {finalInfo} == prop = {result}; layers = {result.m_prefabDataLayer} | {result.m_effectLayer}");
+            //}
             return result;
         }
 
         #endregion
 
         public static bool ApplySwitch(ref PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position) => (info = GetTargetInfo(info, ref id, ref angle, ref position)) != null;
+        public static bool ApplySwitchPopulate(ref PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position)
+        {
+            if (id.NetSegment != 0)
+            {
+                return true;
+            }
+
+            return (info = GetTargetInfo(info, ref id, ref angle, ref position)) != null;
+        }
+
         public static bool ApplySwitchGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle) => (info = GetTargetInfoGlobal(ref info, ref position, propID, ref angle)) != null;
 
 
@@ -375,12 +440,12 @@ namespace Klyte.PropSwitcher.Overrides
                 }
                 else
                 {
-                    var positionSeed = (Mathf.RoundToInt(position.x) % 100000) + (Mathf.RoundToInt(position.z) % 100000 * 100000);
-                    var seed = positionSeed;// switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION || id == default || id.Prop != 0 ? (Mathf.RoundToInt(position.x) % 100000) + (Mathf.RoundToInt(position.z) % 100000 * 100000) : (int)id.Index;
+                    var positionSeed = (Mathf.RoundToInt(position.x) >> 2) * (Mathf.RoundToInt(position.z) >> 2);
+                    var seed = switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION || id == default || id.Prop != 0 ? positionSeed : (int)id.Index;
                     var r = new Randomizer(seed);
                     var targetIdx = r.Int32((uint)switchInfo.SwitchItems.Length);
 
-                    //       LogUtils.DoWarnLog($"Getting model seed: id = b:{id.Building} ns:{id.NetSegment} nl:{id.NetLane} p:{id.Prop} ({id});pos = {position}; postionSeed: {positionSeed}; targetIdx: {targetIdx}; switchInfo: {switchInfo.GetHashCode().ToString("X16")}; source: {Environment.StackTrace}");
+                    //   LogUtils.DoWarnLog($"Getting model seed: id = b:{id.Building} ns:{id.NetSegment} nl:{id.NetLane} p:{id.Prop} ({id});pos = {position}; postionSeed: {positionSeed}; targetIdx: {targetIdx}; switchInfo: {switchInfo.GetHashCode().ToString("X16")}; source: {Environment.StackTrace}");
                     //LogUtils.DoWarnLog($"seed =  {id.Index} +{(int)(position.x + position.y + position.z) % 100} = {seed} | targetIdx = {targetIdx} | position = {position}");
                     infoItem = switchInfo.SwitchItems[targetIdx];
                 }
