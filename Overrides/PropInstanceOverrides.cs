@@ -18,24 +18,9 @@ namespace Klyte.PropSwitcher.Overrides
 
         public void Awake()
         {
-
-
-            //System.Reflection.MethodInfo postRenderMeshs = GetType().GetMethod("AfterRenderMeshes", RedirectorUtils.allFlags);
-            //LogUtils.DoLog($"Patching=> {postRenderMeshs}");
-            //var orMeth = typeof(BuildingManager).GetMethod("EndRenderingImpl", RedirectorUtils.allFlags);
-            //AddRedirect(orMeth, null, postRenderMeshs);
-            //System.Reflection.MethodInfo afterEndOverlayImpl = typeof(WTSBuildingPropsSingleton).GetMethod("AfterEndOverlayImpl", RedirectorUtils.allFlags);
-        //    var allMethods = typeof(PropInstance).GetMethods(RedirectorUtils.allFlags).Where(x => x.Name == "RenderInstance" && x.GetParameters().Length > 3);
-            var objMethod = typeof(PropInstance).GetMethod("RenderInstance", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static);
-       //     var propSwitchMethod = GetType().GetMethod("ApplySwitchPopulate");
-            var propSwitchMethodGlobal = GetType().GetMethod("ApplySwitchGlobal");
-          //  foreach (var method in allMethods)
-        //    {
-         //       AddRedirect(method, propSwitchMethod);
-         //   }
-            AddRedirect(typeof(PropInstance).GetMethod("TerrainUpdated", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Instance), propSwitchMethodGlobal);
+            AddRedirect(typeof(PropInstance).GetMethod("TerrainUpdated", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Instance), GetType().GetMethod("ApplySwitchGlobal"));
             AddRedirect(typeof(PropInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
-            AddRedirect(objMethod, null, null, GetType().GetMethod("DetourRenederInstanceObj"));
+            AddRedirect(typeof(PropInstance).GetMethod("RenderInstance", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
             AddRedirect(typeof(PropInstance).GetMethod("UpdateProp", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
             AddRedirect(typeof(PropInstance).GetMethod("CheckOverlap", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
             AddRedirect(typeof(PropInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
@@ -55,8 +40,9 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> TranspileBuildingAI_XxxxPropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
+            var angleVar = il.DeclareLocal(typeof(float));
 
-            for (int i = 0; i < instrList.Count; i++)
+            for (int i = 2; i < instrList.Count; i++)
             {
                 if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalProp")
                 {
@@ -64,9 +50,19 @@ namespace Klyte.PropSwitcher.Overrides
                     instrList.InsertRange(i, new List<CodeInstruction>{
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Ldarg_1),
+                        new CodeInstruction(OpCodes.Ldloca_S,angleVar),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculatePropGroupData",RedirectorUtils.allFlags)),
                         });
                     i += 6;
+                }
+                if (instrList[i - 2].opcode == OpCodes.Ldfld && instrList[i - 2].operand is FieldInfo fi2 && fi2.Name == "m_radAngle"
+                    && instrList[i - 1].opcode == OpCodes.Add)
+                {
+                    instrList.InsertRange(i, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldloc_S,angleVar),
+                        new CodeInstruction(OpCodes.Add),
+                        });
+                    i += 3;
                 }
 
             }
@@ -78,8 +74,8 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> TranspileBuildingAI_RenderProps(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
-
-            for (int i = 0; i < instrList.Count; i++)
+            var angleVar = il.DeclareLocal(typeof(float));
+            for (int i = 2; i < instrList.Count; i++)
             {
                 if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalProp")
                 {
@@ -87,20 +83,31 @@ namespace Klyte.PropSwitcher.Overrides
                     instrList.InsertRange(i, new List<CodeInstruction>{
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Ldarg_2),
+                        new CodeInstruction(OpCodes.Ldloca_S,angleVar),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculatePropGroupData",RedirectorUtils.allFlags)),
                         });
                     i += 6;
                 }
-
+                if (instrList[i - 2].opcode == OpCodes.Ldfld && instrList[i - 2].operand is FieldInfo fi2 && fi2.Name == "m_radAngle"
+                  && instrList[i - 1].opcode == OpCodes.Add)
+                {
+                    instrList.InsertRange(i, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldloc_S,angleVar),
+                        new CodeInstruction(OpCodes.Add),
+                        });
+                    i += 3;
+                }
             }
+
 
             LogUtils.PrintMethodIL(instrList);
 
             return instrList;
         }
 
-        public static PropInfo BuildingAI_CalculatePropGroupData(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID)
+        public static PropInfo BuildingAI_CalculatePropGroupData(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle)
         {
+            angle = 0;
             var finalProp = prop.m_finalProp;
             if (finalProp == null)
             {
@@ -113,8 +120,7 @@ namespace Klyte.PropSwitcher.Overrides
             Vector3 vector2 = matrix4x2.MultiplyPoint(prop.m_position);
 
             var id = new InstanceID { Building = buildingID };
-            var angleDummy = 0f;
-            var result = GetTargetInfo(finalProp, ref id, ref angleDummy, ref vector2);
+            var result = GetTargetInfo(finalProp, ref id, ref angle, ref vector2);
 
             return result;
         }
@@ -127,7 +133,7 @@ namespace Klyte.PropSwitcher.Overrides
         {
             var instrList = new List<CodeInstruction>(instr);
 
-            ProcessInstructions_NetLane(il, instrList, true, 1, 6, 8, 11, 10, 7, 2, 6, 12, 7);//, "Calculate");
+            ProcessInstructions_NetLane(il, instrList, true, 1, 8, 11, 10, 4, 12, 7);//, "Calculate");
 
             LogUtils.PrintMethodIL(instrList);
 
@@ -137,7 +143,7 @@ namespace Klyte.PropSwitcher.Overrides
         {
             var instrList = new List<CodeInstruction>(instr);
 
-            ProcessInstructions_NetLane(il, instrList, true, 2, 6, 9, 14, 12, 7, 1, 9, 20, 11);//, "Populate");
+            ProcessInstructions_NetLane(il, instrList, true, 2, 9, 14, 12, 6, 20, 11);//, "Populate");
 
             LogUtils.PrintMethodIL(instrList);
 
@@ -147,16 +153,17 @@ namespace Klyte.PropSwitcher.Overrides
         {
             var instrList = new List<CodeInstruction>(instr);
 
-            ProcessInstructions_NetLane(il, instrList, false, 3, 12, 16, 21, 19, 13, 1, 11);//, "Render");
+            ProcessInstructions_NetLane(il, instrList, false, 3, 16, 21, 19, 12);//, "Render");
 
             LogUtils.PrintMethodIL(instrList);
 
             return instrList;
         }
 
-        private static void ProcessInstructions_NetLane(ILGenerator il, List<CodeInstruction> instrList, bool relocateLayerCheck, byte laneIdArgIdx, int propIdx, int finalPropIdx, int variationIdx, int jIdx, int num2Idx, int flagIdx, int invertArgIdx, byte hasPropsIdx = 0, byte layerArgIdx = 0)//, string sourceStr)
+        private static void ProcessInstructions_NetLane(ILGenerator il, List<CodeInstruction> instrList, bool relocateLayerCheck, byte laneIdArgIdx, int finalPropIdx, int variationIdx, int jIdx, byte propDataIdx, byte hasPropsIdx = 0, byte layerArgIdx = 0)//, string sourceStr)
         {
-            for (int i = 1; i < instrList.Count - 2; i++)
+            var angleOffsetVar = il.DeclareLocal(typeof(float));
+            for (int i = 1; i < instrList.Count - 3; i++)
             {
                 if (relocateLayerCheck && instrList[i - 1].opcode == OpCodes.Ldarg_S && instrList[i - 1].operand is byte b && b == hasPropsIdx)
                 {
@@ -186,6 +193,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldarg_S,laneIdArgIdx),
                   //    new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
                     //  new CodeInstruction(OpCodes.Ldstr,sourceStr),
+                        new CodeInstruction(OpCodes.Ldloca_S,angleOffsetVar),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_CalculateGroupData",RedirectorUtils.allFlags)),
                         new CodeInstruction(OpCodes.Stloc_S,localProp)
                     }
@@ -229,12 +237,24 @@ namespace Klyte.PropSwitcher.Overrides
                     }
                     break;
                 }
-
+            }
+            for (int i = 0; i < instrList.Count - 3; i++)
+            {
+                if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == propDataIdx
+                    && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_angle")
+                {
+                    instrList.InsertRange(i, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldloc_S,angleOffsetVar),
+                        new CodeInstruction(OpCodes.Add),
+                        });
+                    i += 6;
+                }
             }
         }
 
-        public static PropInfo NetLane_CalculateGroupData(PropInfo finalInfo,int j, uint laneId)//, int layer, string source)
+        public static PropInfo NetLane_CalculateGroupData(PropInfo finalInfo, int j, uint laneId, out float angleOffset)//, int layer, string source)
         {
+            angleOffset = 0;
             if (finalInfo == null)
             {
                 return null;
@@ -243,10 +263,9 @@ namespace Klyte.PropSwitcher.Overrides
             ref NetLane thiz = ref NetManager.instance.m_lanes.m_buffer[laneId];
 
             var id = new InstanceID { NetSegment = thiz.m_segment };
-            var angleDummy = 0f;
             var vector3 = thiz.m_bezier.Position(1f / j);
             vector3.x += j;
-            var result = GetTargetInfo(finalInfo, ref id, ref angleDummy, ref vector3);
+            var result = GetTargetInfo(finalInfo, ref id, ref angleOffset, ref vector3);
             //if (result != finalInfo)
             //{
             //    LogUtils.DoWarnLog($"s={thiz.m_segment}; l= {laneId}; j = {j}; vector = {vector}; src = {source}; layer = {layer};  finalInfo = {finalInfo} == prop = {result}; layers = {result.m_prefabDataLayer} | {result.m_effectLayer}");
@@ -255,17 +274,6 @@ namespace Klyte.PropSwitcher.Overrides
         }
 
         #endregion
-
-        public static bool ApplySwitch(ref PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position) => (info = GetTargetInfo(info, ref id, ref angle, ref position)) != null;
-        public static bool ApplySwitchPopulate(ref PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position)
-        {
-            if (id.NetSegment != 0)
-            {
-                return true;
-            }
-
-            return (info = GetTargetInfo(info, ref id, ref angle, ref position)) != null;
-        }
 
         public static bool ApplySwitchGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle) => (info = GetTargetInfoGlobal(ref info, ref position, propID, ref angle)) != null;
 
@@ -279,12 +287,18 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> DetourPropInstanceObjMethods(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
+            var localAngle = il.DeclareLocal(typeof(float));
             for (int i = 0; i < instrList.Count; i++)
             {
+                if (instrList[i].operand is MethodInfo mi && mi.Name == "get_Angle")
+                {
+                    instrList.RemoveAt(i);
+                    instrList[i - 1].opcode = OpCodes.Ldloc_S;
+                    instrList[i - 1].operand = localAngle;
+                }
                 if (instrList[i].operand == typeof(PropInstance).GetProperty("Info", RedirectorUtils.allFlags).GetGetMethod())
                 {
                     var localInfo = il.DeclareLocal(typeof(PropInfo));
-                    var localAngle = il.DeclareLocal(typeof(float));
                     var localPosition = il.DeclareLocal(typeof(Vector3));
 
                     instrList.InsertRange(i + 1, new List<CodeInstruction>{
@@ -301,7 +315,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldloca_S, localAngle),
                         new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("GetTargetInfoGlobal",RedirectorUtils.allFlags)),
                         });
-                    i += 10;
+                    i += 14;
                 }
 
             }
@@ -312,12 +326,19 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> DetourRenederInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
+
+            var localAngle = il.DeclareLocal(typeof(float));
             for (int i = 0; i < instrList.Count; i++)
             {
+                if (instrList[i].operand is MethodInfo mi && mi.Name == "get_Angle")
+                {
+                    instrList.RemoveAt(i);
+                    instrList[i - 1].opcode = OpCodes.Ldloc_S;
+                    instrList[i - 1].operand = localAngle;
+                }
                 if (instrList[i].operand == typeof(PropInstance).GetProperty("Info", RedirectorUtils.allFlags).GetGetMethod())
                 {
                     var localInfo = il.DeclareLocal(typeof(PropInfo));
-                    var localAngle = il.DeclareLocal(typeof(float));
                     var localPosition = il.DeclareLocal(typeof(Vector3));
 
                     instrList.InsertRange(i + 1, new List<CodeInstruction>{
