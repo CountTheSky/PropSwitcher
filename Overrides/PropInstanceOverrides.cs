@@ -300,6 +300,10 @@ namespace Klyte.PropSwitcher.Overrides
                 {
                     var localInfo = il.DeclareLocal(typeof(PropInfo));
                     var localPosition = il.DeclareLocal(typeof(Vector3));
+                    var lblPass = il.DefineLabel();
+                    var lastInstr = new CodeInstruction(OpCodes.Ldloc_S, localInfo);
+                    lastInstr.labels.Add(lblPass);
+
 
                     instrList.InsertRange(i + 1, new List<CodeInstruction>{
                         new CodeInstruction(OpCodes.Stloc_S, localInfo),
@@ -314,6 +318,13 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Stloc_S, localAngle),
                         new CodeInstruction(OpCodes.Ldloca_S, localAngle),
                         new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("GetTargetInfoGlobal",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Stloc_S, localInfo),
+                        new CodeInstruction(OpCodes.Ldloc_S, localInfo),
+                        new CodeInstruction(OpCodes.Ldnull),
+                        new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Brfalse_S, lblPass),
+                        new CodeInstruction(OpCodes.Ret),
+                        lastInstr,
                         });
                     i += 14;
                 }
@@ -340,6 +351,10 @@ namespace Klyte.PropSwitcher.Overrides
                 {
                     var localInfo = il.DeclareLocal(typeof(PropInfo));
                     var localPosition = il.DeclareLocal(typeof(Vector3));
+                    var lblPass = il.DefineLabel();
+                    var lastInstr = new CodeInstruction(OpCodes.Ldloc_S, localInfo);
+                    lastInstr.labels.Add(lblPass);
+
 
                     instrList.InsertRange(i + 1, new List<CodeInstruction>{
                         new CodeInstruction(OpCodes.Stloc_S, localInfo),
@@ -354,6 +369,13 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Stloc_S, localAngle),
                         new CodeInstruction(OpCodes.Ldloca_S, localAngle),
                         new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("GetTargetInfoGlobal",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Stloc_S, localInfo),
+                        new CodeInstruction(OpCodes.Ldloc_S, localInfo),
+                        new CodeInstruction(OpCodes.Ldnull),
+                        new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Brfalse_S, lblPass),
+                        new CodeInstruction(OpCodes.Ret),
+                        lastInstr,
                         });
                     i += 10;
                 }
