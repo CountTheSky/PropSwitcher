@@ -15,10 +15,13 @@ namespace Klyte.PropSwitcher.Xml
             set {
                 if (!value.IsNullOrWhiteSpace())
                 {
+                    LegacyLoaded = true;
                     SwitchItems = SwitchItems.Where(x => x.TargetPrefab != value).Union(new Item[] { new Item { TargetPrefab = value } }).ToArray();
                 }
             }
         }
+
+        internal bool LegacyLoaded { get; private set; } = false;
 
         [XmlElement("SwitchItem")]
         public Item[] SwitchItems { get; set; } = new Item[0];

@@ -1,6 +1,7 @@
-﻿<color #FF8800>PSv1.1 (15/JUL/20)</color>
+﻿<color #FF8800>PSv1.1 (18/JUL/20)</color>
 <color yellow>- Added multi-replace support: You can choose a bunch of possible props/trees to replace</color>
 You can configure them to randomize by building/segment, or set it to be fully randomized. Can be very useful to easily generate a randomized forest!
+<color cyan>NOTE:</color> Due some deep changes, all previously made changes that had as target to remove a tree or prop will be erased on first load.
 
 <color yellow>- Added rotation offset support to props</color>
 Trees unsuported due to lack of game code support for that.
