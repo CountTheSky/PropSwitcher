@@ -55,7 +55,7 @@ namespace Klyte.PropSwitcher
             get {
                 if (m_treesLoaded == null)
                 {
-                    m_treesLoaded = GetInfos<TreeInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second.name);
+                    m_treesLoaded = new Dictionary<string, string>();// GetInfos<TreeInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second.name);
                 }
                 return m_treesLoaded;
             }

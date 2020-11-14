@@ -1,4 +1,6 @@
-﻿<color #FF8800>PSv1.1 (18/JUL/20)</color>
+﻿<color #FF0000>Update r1 (18/JUL/20): Tree support temporarily removed! May be back in next patch</color>
+
+<color #FF8800>PSv1.1 (18/JUL/20)</color>
 <color yellow>- Added multi-replace support: You can choose a bunch of possible props/trees to replace</color>
 You can configure them to randomize by building/segment, or set it to be fully randomized. Can be very useful to easily generate a randomized forest!
 <color cyan>NOTE:</color> Due some deep changes, all previously made changes that had as target to remove a tree or prop will be erased on first load.
@@ -10,14 +12,3 @@ Trees unsuported due to lack of game code support for that.
 	> Trees names on search now are the same from ingame UI
 	> Fixed illumination properties when replacing a prop
 	> Added support to props with effects
-
-<color gray>UPDATE r1 (06/JUL/20)
-	- Fixed: Throwing exception if try to remove trees
-	- Fixed: Throwing exception sometimes when loading a city
-	- Fixed: Custom props when selected in "target to replace" field show trees instead of props in the list of available replacement
-	- Changed Behavior: Now allow replace a prop/tree by itself (useful to override global files)
-	- Added to buildings and networks list also the Global Configurations from files:
-		- GREEN if active
-		- RED if overriden in the savegame
-	- Added typeable filters in the replacement list (by target to replace, replacement) and also a dropdown to filter rule source (for networks and buildings) 
-</color>
