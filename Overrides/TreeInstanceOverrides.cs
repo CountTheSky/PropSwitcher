@@ -21,11 +21,11 @@ namespace Klyte.PropSwitcher.Overrides
         public void Awake()
         {
             AddRedirect(typeof(BuildingAI).GetMethod("RenderProps", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Public), null, null, GetType().GetMethod("Transpile_BuildingAI_RenderProps"));
-            AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_BuildingAI_XxxxxGroupData"));
-            AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_BuildingAI_XxxxxGroupData"));
+            AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_BuildingAI_PopulateGroupData"));
+            AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_BuildingAI_CalculateGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("RenderInstance", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_NetLane_RenderInstance"));
-            AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_NetLane_XxxxxxxGroupData"));
-            AddRedirect(typeof(NetLane).GetMethod("CalculateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_NetLane_XxxxxxxGroupData"));
+            AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_NetLane_PopulateGroupData"));
+            AddRedirect(typeof(NetLane).GetMethod("CalculateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("Transpile_NetLane_CalculateGroupData"));
 
 
 
@@ -80,7 +80,7 @@ namespace Klyte.PropSwitcher.Overrides
         }
         #endregion
         #region BuildingAI
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_XxxxxGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
 
@@ -92,6 +92,30 @@ namespace Klyte.PropSwitcher.Overrides
                     {
                         new CodeInstruction(OpCodes.Ldarg_1 ),
                         new CodeInstruction(OpCodes.Ldloc_S,7),
+                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") ),
+
+                    });
+                    i += 8;
+                }
+
+            }
+
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
+        }
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        {
+            var instrList = new List<CodeInstruction>(instr);
+
+            for (int i = 2; i < instrList.Count; i++)
+            {
+                if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalTree")
+                {
+                    instrList.InsertRange(i + 1, new List<CodeInstruction>
+                    {
+                        new CodeInstruction(OpCodes.Ldarg_1 ),
+                        new CodeInstruction(OpCodes.Ldloc_S,16),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") ),
 
                     });
@@ -129,7 +153,7 @@ namespace Klyte.PropSwitcher.Overrides
         #endregion
         #region NetLane
 
-        public static IEnumerable<CodeInstruction> Transpile_NetLane_XxxxxxxGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> Transpile_NetLane_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
 
@@ -143,6 +167,33 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldloc_S,5),
                         new CodeInstruction(OpCodes.Ldloc_S,14),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetLane") ),
+
+                    });
+                    i += 8;
+                }
+
+            }
+
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
+        }
+        public static IEnumerable<CodeInstruction> Transpile_NetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        {
+            var instrList = new List<CodeInstruction>(instr);
+
+            for (int i = 2; i < instrList.Count; i++)
+            {
+                if (instrList[i].opcode == OpCodes.Ldloc && instrList[i].operand is LocalVariableInfo li && li.LocalIndex == 23)
+                {
+                    instrList.RemoveAt(i + 2);
+                    instrList.RemoveAt(i + 1);
+                    instrList.InsertRange(i + 1, new List<CodeInstruction>
+                    {
+                        new CodeInstruction(OpCodes.Ldarg_1 ),
+                        new CodeInstruction(OpCodes.Ldloc_S,5),
+                        new CodeInstruction(OpCodes.Ldloc_S,25),
+                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetSegment") ),
 
                     });
                     i += 8;

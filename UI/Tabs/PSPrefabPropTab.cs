@@ -64,7 +64,7 @@ namespace Klyte.PropSwitcher.UI
 
             AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterPrefab, GetCurrentValuePrefab, OnChangeValuePrefab);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
-            AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, (x) => { });
+            AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, OnChangeSeedSource);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             this.m_rotationOffset = m_rotationOffset[0];
@@ -332,15 +332,30 @@ namespace Klyte.PropSwitcher.UI
             {
                 PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name] = new SimpleXmlDictionary<string, SwitchInfo>();
             }
+
             _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out string inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
             _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out string outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
-
             if (!PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name].ContainsKey(inText))
             {
                 PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText] = new Xml.SwitchInfo();
             }
 
             PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
+            PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
+            for (int i = 0; i < 32; i++)
+            {
+                RenderManager.instance.UpdateGroups(i);
+            }
+            UpdateDetoursList();
+        }
+
+        private void OnChangeSeedSource(bool newVal)
+        {
+            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out string inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
+            if (!PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name].ContainsKey(inText))
+            {
+                return;
+            }
             PSPropData.Instance.PrefabChildEntries[GetCurrentTargetPrefab().name][inText].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
             for (int i = 0; i < 32; i++)
             {
