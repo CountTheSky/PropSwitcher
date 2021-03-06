@@ -1,4 +1,5 @@
-﻿using ColossalFramework.UI;
+﻿using ColossalFramework.Globalization;
+using ColossalFramework.UI;
 using Klyte.Commons;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
@@ -6,6 +7,7 @@ using Klyte.PropSwitcher.Tools;
 using Klyte.PropSwitcher.Xml;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
@@ -37,25 +39,66 @@ namespace Klyte.PropSwitcher
             base.StartActions();
         }
 
-        private Dictionary<string, string> m_propsLoaded;
-        public Dictionary<string, string> PropsLoaded
+        public class TextSearchEntry
         {
-            get {
+            public List<string> terms;
+            public string prefabName;
+            public string displayName;
+
+            internal bool MatchesTerm(string arg) => terms.Any(x => LocaleManager.cultureInfo.CompareInfo.IndexOf(x, arg, CompareOptions.IgnoreCase) >= 0);
+        }
+
+        private Dictionary<string, TextSearchEntry> m_propsLoaded;
+        public Dictionary<string, TextSearchEntry> PropsLoaded
+        {
+            get
+            {
                 if (m_propsLoaded == null)
                 {
-                    m_propsLoaded = GetInfos<PropInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second.name);
+                    m_propsLoaded = GetInfos<PropInfo>().Where(x => x?.name != null)
+                    .Select(
+                        x => new TextSearchEntry()
+                        {
+                            prefabName = x.name,
+                            displayName = GetListName(x),
+                            terms = new List<string>()
+                            {
+                                x.name,
+                                GetListName(x),
+                                x.GetUncheckedLocalizedTitle(),
+                                PropIndexes.instance.AuthorList.TryGetValue(x.name.Split('.')[0], out string author) ? author : null
+                            }.Where(x => x != null).ToList()
+                        }
+                    )
+                    .ToDictionary(x => x.displayName, x => x);
                 }
                 return m_propsLoaded;
             }
         }
 
-        private Dictionary<string, string> m_treesLoaded;
-        public Dictionary<string, string> TreesLoaded
+        private Dictionary<string, TextSearchEntry> m_treesLoaded;
+        public Dictionary<string, TextSearchEntry> TreesLoaded
         {
-            get {
+            get
+            {
                 if (m_treesLoaded == null)
                 {
-                    m_treesLoaded = GetInfos<TreeInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second.name);
+                    m_treesLoaded = GetInfos<TreeInfo>().Where(x => x?.name != null)
+                    .Select(
+                        x => new TextSearchEntry()
+                        {
+                            prefabName = x.name,
+                            displayName = GetListName(x),
+                            terms = new List<string>()
+                            {
+                                x.name,
+                                GetListName(x),
+                                x.GetUncheckedLocalizedTitle(),
+                                TreeIndexes.instance.AuthorList.TryGetValue(x.name.Split('.')[0], out string author) ? author : null
+                            }.Where(x => x != null).ToList()
+                        }
+                    )
+                    .ToDictionary(x => x.displayName, x => x);
                 }
                 return m_treesLoaded;
             }
@@ -64,7 +107,8 @@ namespace Klyte.PropSwitcher
         private Dictionary<string, BuildingInfo> m_buildingsLoaded;
         public Dictionary<string, BuildingInfo> BuildingsLoaded
         {
-            get {
+            get
+            {
                 if (m_buildingsLoaded == null)
                 {
                     m_buildingsLoaded = GetInfos<BuildingInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second);
@@ -76,7 +120,8 @@ namespace Klyte.PropSwitcher
         private Dictionary<string, NetInfo> m_netsLoaded;
         public Dictionary<string, NetInfo> NetsLoaded
         {
-            get {
+            get
+            {
                 if (m_netsLoaded == null)
                 {
                     m_netsLoaded = GetInfos<NetInfo>().Where(x => x?.name != null).GroupBy(x => GetListName(x)).Select(x => Tuple.New(x.Key, x.FirstOrDefault())).ToDictionary(x => x.First, x => x.Second);

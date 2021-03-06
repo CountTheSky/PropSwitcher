@@ -156,51 +156,14 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> Transpile_NetLane_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
-
-            for (int i = 2; i < instrList.Count; i++)
-            {
-                if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalTree")
-                {
-                    instrList.InsertRange(i + 1, new List<CodeInstruction>
-                    {
-                        new CodeInstruction(OpCodes.Ldarg_1 ),
-                        new CodeInstruction(OpCodes.Ldloc_S,5),
-                        new CodeInstruction(OpCodes.Ldloc_S,14),
-                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetLane") ),
-
-                    });
-                    i += 8;
-                }
-
-            }
-
+            ApplyTreeRenderSelection(il, instrList, 1, 27, 25, 5);
             LogUtils.PrintMethodIL(instrList);
-
             return instrList;
         }
         public static IEnumerable<CodeInstruction> Transpile_NetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
-
-            for (int i = 2; i < instrList.Count; i++)
-            {
-                if (instrList[i].opcode == OpCodes.Ldloc && instrList[i].operand is LocalVariableInfo li && li.LocalIndex == 23)
-                {
-                    instrList.RemoveAt(i + 2);
-                    instrList.RemoveAt(i + 1);
-                    instrList.InsertRange(i + 1, new List<CodeInstruction>
-                    {
-                        new CodeInstruction(OpCodes.Ldarg_1 ),
-                        new CodeInstruction(OpCodes.Ldloc_S,5),
-                        new CodeInstruction(OpCodes.Ldloc_S,25),
-                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetSegment") ),
-
-                    });
-                    i += 8;
-                }
-
-            }
-
+            ApplyTreeRenderSelection(il, instrList, 2, 27, 25, 5);
             LogUtils.PrintMethodIL(instrList);
 
             return instrList;
@@ -208,14 +171,22 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> Transpile_NetLane_RenderInstance(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
+            ApplyTreeRenderSelection(il, instrList, 3, 35, 33, 11);
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
+        }
+
+        private static void ApplyTreeRenderSelection(ILGenerator il, List<CodeInstruction> instrList, int laneIdArgIdx, int selTreeIdx, int kIteratorIdx, int iIteratorIdx)
+        {
             for (int i = 0; i < instrList.Count - 2; i++)
             {
-                if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder builder && builder.LocalIndex == 35)
+                if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder builder && builder.LocalIndex == selTreeIdx)
                 {
                     for (int j = i; j < instrList.Count - 2; j++)
                     {
                         if (
-                            instrList[j].opcode == OpCodes.Ldloc_S && instrList[j].operand is LocalBuilder builder1 && builder1.LocalIndex == 33
+                            instrList[j].opcode == OpCodes.Ldloc_S && instrList[j].operand is LocalBuilder builder1 && builder1.LocalIndex == kIteratorIdx
                             && instrList[j + 1].opcode == OpCodes.Ldc_I4_2
                             && instrList[j + 2].opcode == OpCodes.Add
                             )
@@ -227,12 +198,12 @@ namespace Klyte.PropSwitcher.Overrides
                             instrList.RemoveAt(i);
                             instrList.InsertRange(i, new List<CodeInstruction>
                             {
-                                 new CodeInstruction(OpCodes.Ldarg_2),
-                                 new CodeInstruction(OpCodes.Ldloc_S,11),
-                                 new CodeInstruction(OpCodes.Ldloc_S,33),
+                                 new CodeInstruction(OpCodes.Ldarg_S,laneIdArgIdx),
+                                 new CodeInstruction(OpCodes.Ldloc_S,iIteratorIdx),
+                                 new CodeInstruction(OpCodes.Ldloc_S,kIteratorIdx),
                                  new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("NetLane_RenderInstance", RedirectorUtils.allFlags) ),
-                                 new CodeInstruction(OpCodes.Stloc_S,35),
-                                 new CodeInstruction(OpCodes.Ldloc_S,35),
+                                 new CodeInstruction(OpCodes.Stloc_S,selTreeIdx),
+                                 new CodeInstruction(OpCodes.Ldloc_S,selTreeIdx),
                                  new CodeInstruction(OpCodes.Brfalse,loopLabel),
                             });
                             break;
@@ -242,26 +213,20 @@ namespace Klyte.PropSwitcher.Overrides
                 }
 
             }
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
         }
-        public static TreeInfo NetLane_RenderInstance(TreeInfo treeInfo, ref Randomizer randomizer2, ushort segmentID, int i, int k)
+
+
+        public static TreeInfo NetLane_RenderInstance(TreeInfo treeInfo, ref Randomizer randomizer2, ushort laneId, int i, int k)
         {
-            var finalTree = GetTargetInfoFromNetSegment(treeInfo, segmentID, i, k);
+            var finalTree = GetTargetInfoFromNetLane(treeInfo, laneId, i, k);
             return finalTree?.GetVariation(ref randomizer2);
         }
         #endregion
 
         public static TreeInfo GetTargetInfoWithoutId(TreeInfo info) => GetTargetInfo_internal(info);
         public static TreeInfo GetTargetInfoWithPosition(TreeInfo info, Vector3 position) => GetTargetInfo_internal(info, position);
-        public static TreeInfo GetTargetInfoFromNetSegment(TreeInfo info, ushort segmentId, int itemId, int iteration) => GetTargetInfo_internal(info, new Vector3(segmentId, itemId, iteration), new InstanceID { NetSegment = segmentId });
-        public static TreeInfo GetTargetInfoFromNetLane(TreeInfo info, ushort laneId, int itemId, int iteration)
-        {
-            var segmentId = NetManager.instance.m_lanes.m_buffer[laneId].m_segment;
-            return GetTargetInfo_internal(info, new Vector3(segmentId, itemId, iteration), new InstanceID { NetSegment = segmentId });
-        }
-
+        public static TreeInfo GetTargetInfoFromNetLane(TreeInfo info, ushort laneId, int itemId, int iteration) => GetTargetInfo_internal(info, new Vector3(laneId, itemId, iteration), new InstanceID { NetLane = laneId });
+        
         public static TreeInfo GetTargetInfoFromBuilding(TreeInfo info, ushort buildingId, int itemId) => GetTargetInfo_internal(info, new Vector3(buildingId, itemId), new InstanceID { Building = buildingId });
         private static TreeInfo GetTargetInfo_internal(TreeInfo info, Vector3 position = default, InstanceID id = default)
         {

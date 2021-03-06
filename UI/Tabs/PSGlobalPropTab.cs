@@ -11,6 +11,7 @@ using System.Globalization;
 using System.Linq;
 using UnityEngine;
 using static Klyte.Commons.UI.DefaultEditorUILib;
+using static Klyte.PropSwitcher.PSController;
 using static Klyte.PropSwitcher.Xml.SwitchInfo;
 
 namespace Klyte.PropSwitcher.UI
@@ -50,9 +51,9 @@ namespace Klyte.PropSwitcher.UI
             var m_btnImport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", false);
             var m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", false);
 
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, GetCurrentValueIn, OnChangeValueIn);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn);
             AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, (x) => { });
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, GetCurrentValueOut, OnChangeValueOut);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, OnChangeValueOut);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             this.m_rotationOffset = m_rotationOffset[0];
             Destroy(m_rotationOffset[1]);
@@ -91,7 +92,7 @@ namespace Klyte.PropSwitcher.UI
             PSSwitchEntry.CreateTemplateDetourItem(m_detourList.width);
             m_listItems = new UITemplateList<UIPanel>(m_detourList, PSSwitchEntry.DETOUR_ITEM_TEMPLATE);
             UpdateDetoursList();
-            this.m_rotationOffset.parent.isVisible =false;
+            this.m_rotationOffset.parent.isVisible = false;
 
         }
 
@@ -105,58 +106,54 @@ namespace Klyte.PropSwitcher.UI
             UpdateDetoursList();
         }
 
-        private void OnExportData(string defaultText = null)
+        private void OnExportData(string defaultText = null) => K45DialogControl.ShowModalPromptText(new K45DialogControl.BindProperties
         {
-            K45DialogControl.ShowModalPromptText(new K45DialogControl.BindProperties
+            defaultTextFieldContent = defaultText,
+            message = Locale.Get("K45_PS_TYPESAVENAMEFORLIST"),
+            showButton1 = true,
+            textButton1 = Locale.Get("SAVE"),
+            showButton2 = true,
+            textButton2 = Locale.Get("CANCEL"),
+        }, (ret, text) =>
+        {
+            if (ret == 1)
             {
-                defaultTextFieldContent = defaultText,
-                message = Locale.Get("K45_PS_TYPESAVENAMEFORLIST"),
-                showButton1 = true,
-                textButton1 = Locale.Get("SAVE"),
-                showButton2 = true,
-                textButton2 = Locale.Get("CANCEL"),
-            }, (ret, text) =>
-            {
-                if (ret == 1)
+                if (text.IsNullOrWhiteSpace())
                 {
-                    if (text.IsNullOrWhiteSpace())
-                    {
-                        K45DialogControl.UpdateCurrentMessage($"<color #FFFF00>{Locale.Get("K45_PS_INVALIDNAME")}</color>\n\n{Locale.Get("K45_PS_TYPESAVENAMEFORLIST")}");
-                        return false;
-                    }
-                    PSLibPropSettings.Reload();
-                    var currentData = PSLibPropSettings.Instance.Get(text);
-                    if (currentData == null)
-                    {
-                        AddCurrentListToLibrary(text);
-                    }
-                    else
-                    {
-                        K45DialogControl.ShowModal(new K45DialogControl.BindProperties
-                        {
-                            message = string.Format(Locale.Get("K45_PS_CONFIRMOVERWRITE"), text),
-                            showButton1 = true,
-                            textButton1 = Locale.Get("YES"),
-                            showButton2 = true,
-                            textButton2 = Locale.Get("NO"),
-                        }, (x) =>
-                        {
-                            if (x == 1)
-                            {
-                                AddCurrentListToLibrary(text);
-                            }
-                            else
-                            {
-                                OnExportData(text);
-                            }
-                            return true;
-                        });
-                    }
+                    K45DialogControl.UpdateCurrentMessage($"<color #FFFF00>{Locale.Get("K45_PS_INVALIDNAME")}</color>\n\n{Locale.Get("K45_PS_TYPESAVENAMEFORLIST")}");
+                    return false;
                 }
-                return true;
-            });
-
-        }
+                PSLibPropSettings.Reload();
+                var currentData = PSLibPropSettings.Instance.Get(text);
+                if (currentData == null)
+                {
+                    AddCurrentListToLibrary(text);
+                }
+                else
+                {
+                    K45DialogControl.ShowModal(new K45DialogControl.BindProperties
+                    {
+                        message = string.Format(Locale.Get("K45_PS_CONFIRMOVERWRITE"), text),
+                        showButton1 = true,
+                        textButton1 = Locale.Get("YES"),
+                        showButton2 = true,
+                        textButton2 = Locale.Get("NO"),
+                    }, (x) =>
+                    {
+                        if (x == 1)
+                        {
+                            AddCurrentListToLibrary(text);
+                        }
+                        else
+                        {
+                            OnExportData(text);
+                        }
+                        return true;
+                    });
+                }
+            }
+            return true;
+        });
         private static void AddCurrentListToLibrary(string text)
         {
             PSLibPropSettings.Reload();
@@ -276,7 +273,7 @@ namespace Klyte.PropSwitcher.UI
             var keyList = PSPropData.Instance.Entries.Where(x =>
             (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
             && (m_filterOut.text.IsNullOrWhiteSpace() || x.Value.SwitchItems.Any(z => CheckIfPrefabMatchesFilter(m_filterOut.text, z.TargetPrefab)))
-            ).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.Key == y.Value).FirstOrDefault().Key ?? x.Key).ToArray();
+            ).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.Key == y.Value.prefabName).FirstOrDefault().Key ?? x.Key).ToArray();
             UIPanel[] rows = m_listItems.SetItemCount(keyList.Length);
             for (int i = 0; i < keyList.Length; i++)
             {
@@ -299,15 +296,15 @@ namespace Klyte.PropSwitcher.UI
                 return;
             }
 
-            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out string inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
-            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out string outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
+            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out TextSearchEntry inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
+            _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out TextSearchEntry outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
 
-            if (!PSPropData.Instance.Entries.ContainsKey(inText))
+            if (!PSPropData.Instance.Entries.ContainsKey(inText.prefabName))
             {
-                PSPropData.Instance.Entries[inText] = new Xml.SwitchInfo();
+                PSPropData.Instance.Entries[inText.prefabName] = new Xml.SwitchInfo();
             }
-            PSPropData.Instance.Entries[inText].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
-            PSPropData.Instance.Entries[inText].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
+            PSPropData.Instance.Entries[inText.prefabName].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText.prefabName, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
+            PSPropData.Instance.Entries[inText.prefabName].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
 
             for (int i = 0; i < 32; i++)
             {
@@ -317,7 +314,7 @@ namespace Klyte.PropSwitcher.UI
 
         }
 
-        private string OnChangeValueOut(int arg1, string[] arg2)
+        private string OnChangeValueOut(string currentVal, int arg1, string[] arg2)
         {
             if (arg1 >= 0 && arg1 < arg2.Length)
             {
@@ -337,20 +334,16 @@ namespace Klyte.PropSwitcher.UI
             }
             return (PropSwitcherMod.Controller.PropsLoaded.ContainsKey(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
                 //.Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : CheckIfPrefabMatchesFilter(arg, x.Value))
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : x.Value.MatchesTerm(arg))
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
         }
 
-        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName == null ? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER") : prefabName + (PrefabUtils.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
-        private string GetCurrentValueIn()
-        {
-            m_rotationOffset.parent.isVisible = false;
-            return "";
-        }
+        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName == null ? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER") : prefabName + (PropIndexes.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
 
-        private string OnChangeValueIn(int arg1, string[] arg2)
+
+        private string OnChangeValueIn(string currentVal, int arg1, string[] arg2)
         {
             m_out.text = "";
             if (arg1 >= 0 && arg1 < arg2.Length)
@@ -368,8 +361,8 @@ namespace Klyte.PropSwitcher.UI
         private string[] OnChangeFilterIn(string arg) =>
             PropSwitcherMod.Controller.PropsLoaded
             .Union(PropSwitcherMod.Controller.TreesLoaded)
-            .Where(x => PSPropData.Instance.Entries.Values.Where(y => y.SwitchItems.Any(z => z.TargetPrefab == x.Value)).Count() == 0)
-                .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value + (PrefabUtils.instance.AuthorList.TryGetValue(x.Value.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
+            .Where(x => PSPropData.Instance.Entries.Values.Where(y => y.SwitchItems.Any(z => z.TargetPrefab == x.Value.prefabName)).Count() == 0)
+                .Where((x) => arg.IsNullOrWhiteSpace() ? true : x.Value.MatchesTerm(arg))
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
@@ -379,9 +372,9 @@ namespace Klyte.PropSwitcher.UI
         public void SetCurrentLoadedData(string fromSource, SwitchInfo info) => SetCurrentLoadedData(fromSource, info, null);
         public void SetCurrentLoadedData(string fromSource, SwitchInfo info, string target)
         {
-            m_in.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromSource == y.Value).FirstOrDefault().Key ?? fromSource ?? "";
+            m_in.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromSource == y.Value.prefabName).FirstOrDefault().Key ?? fromSource ?? "";
             var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
-            m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
+            m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
             m_rotationOffset.text = targetSwitch.RotationOffset.ToString("F3");
             m_seedSource.isChecked = info.SeedSource == RandomizerSeedSource.INSTANCE;
             m_rotationOffset.parent.isVisible = PropSwitcherMod.Controller.PropsLoaded.ContainsKey(fromSource);
