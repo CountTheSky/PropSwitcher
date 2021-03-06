@@ -32,6 +32,9 @@ namespace Klyte.PropSwitcher.Xml
 
         public class Item
         {
+            [XmlAttribute("prefabIdx")]
+            public int PrefabIdx { get; set; } = -1;
+
             [XmlAttribute("targetPrefab")]
             public string TargetPrefab { get; set; }
             [XmlAttribute("weightDraw")]

@@ -16,8 +16,7 @@ namespace Klyte.PropSwitcher
 {
     public class PSController : BaseController<PropSwitcherMod, PSController>
     {
-        public static readonly string FOLDER_NAME = "PropSwitcher";
-        public static readonly string FOLDER_PATH = FileUtils.BASE_FOLDER_PATH + FOLDER_NAME;
+        public static readonly string FOLDER_PATH = FileUtils.BASE_FOLDER_PATH + "PropSwitcher";
 
         public RoadSegmentTool RoadSegmentToolInstance => FindObjectOfType<RoadSegmentTool>();
         public BuildingEditorTool BuildingEditorToolInstance => FindObjectOfType<BuildingEditorTool>();
@@ -132,7 +131,7 @@ namespace Klyte.PropSwitcher
 
         public const string DEFAULT_GLOBAL_PROP_CONFIG_FOLDER = "DefaultReplacingPropOnPrefabs";
 
-        public static string DefaultGlobalPropConfigurationFolder { get; } = FOLDER_NAME + Path.DirectorySeparatorChar + DEFAULT_GLOBAL_PROP_CONFIG_FOLDER;
+        public static string DefaultGlobalPropConfigurationFolder { get; } = FOLDER_PATH + Path.DirectorySeparatorChar + DEFAULT_GLOBAL_PROP_CONFIG_FOLDER;
 
         private List<T> GetInfos<T>() where T : PrefabInfo
         {

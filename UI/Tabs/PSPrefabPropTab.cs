@@ -41,32 +41,36 @@ namespace Klyte.PropSwitcher.UI
         private UIPanel m_filterRow;
         private UIDropDown m_filterSource;
 
+        protected abstract string TitleLocale { get; }
+
         protected void Awake()
         {
             UIPanel layoutPanel = GetComponent<UIPanel>();
-            layoutPanel.padding = new RectOffset(8, 8, 10, 10);
+            layoutPanel.padding = new RectOffset(8, 8, 0, 0);
             layoutPanel.autoLayout = true;
             layoutPanel.autoLayoutDirection = LayoutDirection.Vertical;
-            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 5);
+            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 3);
             layoutPanel.clipChildren = true;
             var uiHelper = new UIHelperExtension(layoutPanel);
 
-            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 50));
+            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 30));
             m_actionBar.autoLayout = true;
             m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
-            m_actionBar.padding = new RectOffset(5, 5, 5, 5);
+            m_actionBar.padding = new RectOffset(0, 0, 0, 2);
             m_actionBar.autoFitChildrenVertically = true;
             var m_topHelper = new UIHelperExtension(m_actionBar);
 
-            AddLabel("", m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription);
-            m_btnDelete = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", false);
-            m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, OnExportAsGlobal, "K45_PS_EXPORTASGLOBAL", false);
-            AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Reload, OnReloadFiles, "K45_PS_RELOADGLOBAL", false);
+            AddLabel(Locale.Get(TitleLocale), m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription, false);
+            m_labelSelectionDescription.size = new Vector2(m_containerSelectionDescription.width - m_containerSelectionDescription.padding.left - m_containerSelectionDescription.padding.right - 4, 30);
+            m_labelSelectionDescription.padding.top = 8;
+            m_btnDelete = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", true, 30);
+            m_btnExport = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, OnExportAsGlobal, "K45_PS_EXPORTASGLOBAL", true, 30);
+            AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Reload, OnReloadFiles, "K45_PS_RELOADGLOBAL", true, 30);
 
-            AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterPrefab,  OnChangeValuePrefab);
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn,  OnChangeValueIn);
+            AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterPrefab, OnChangeValuePrefab);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn);
             AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, OnChangeSeedSource);
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut,  OnChangeValueOut);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, OnChangeValueOut);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             this.m_rotationOffset = m_rotationOffset[0];
             Destroy(m_rotationOffset[1]);
@@ -173,14 +177,11 @@ namespace Klyte.PropSwitcher.UI
         }
         private string GetCurrentValuePrefab() => "";
 
-        private string[] OnChangeFilterPrefab(string arg)
-        {
-            return PrefabsLoaded
+        private string[] OnChangeFilterPrefab(string arg) => PrefabsLoaded
                 .Where((x) => arg.IsNullOrWhiteSpace() ? true : LocaleManager.cultureInfo.CompareInfo.IndexOf(x.Value.name + (PropIndexes.instance.AuthorList.TryGetValue(x.Value.name.Split('.')[0], out string author) ? "\n" + author : ""), arg, CompareOptions.IgnoreCase) >= 0)
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
-        }
 
         private void OnClearList()
         {
@@ -446,6 +447,8 @@ namespace Klyte.PropSwitcher.UI
     {
         protected override Dictionary<string, BuildingInfo> PrefabsLoaded => PropSwitcherMod.Controller.BuildingsLoaded;
 
+        protected override string TitleLocale => "K45_PS_BUILDINGPROP_EDITOR";
+
         internal override void EnablePickTool()
         {
             m_prefab.text = "";
@@ -470,6 +473,7 @@ namespace Klyte.PropSwitcher.UI
     {
         protected override Dictionary<string, NetInfo> PrefabsLoaded => PropSwitcherMod.Controller.NetsLoaded;
 
+        protected override string TitleLocale => "K45_PS_NETPROP_EDITOR";
         internal override bool IsPropAvailableOnCurrentPrefab(KeyValuePair<string, TextSearchEntry> x) => GetCurrentTargetPrefab().m_lanes?.SelectMany(y => y?.m_laneProps?.m_props ?? new NetLaneProps.Prop[0]).Where(y => y?.m_finalProp?.name == x.Value.prefabName || y?.m_finalTree?.name == x.Value.prefabName).FirstOrDefault() != default;
         internal override void EnablePickTool()
         {

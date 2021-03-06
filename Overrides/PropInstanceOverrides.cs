@@ -26,8 +26,8 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(PropInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
 
 
-            AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_XxxxPropGroupData"));
-            AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_XxxxPropGroupData"));
+            AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_CalculatePropGroupData"));//7
+            AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_PopulatePropGroupData"));//16
             AddRedirect(typeof(BuildingAI).GetMethod("RenderProps", RedirectorUtils.allFlags & ~BindingFlags.Public), null, null, GetType().GetMethod("TranspileBuildingAI_RenderProps"));
             AddRedirect(typeof(NetLane).GetMethod("CalculateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_CalculateGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_PopulateGroupData"));
@@ -37,7 +37,9 @@ namespace Klyte.PropSwitcher.Overrides
 
 
         #region BuildingAI
-        public static IEnumerable<CodeInstruction> TranspileBuildingAI_XxxxPropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> TranspileBuildingAI_CalculatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(7, instr, il);
+        public static IEnumerable<CodeInstruction> TranspileBuildingAI_PopulatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(16, instr, il);
+        private static IEnumerable<CodeInstruction> TranspileBuildingAI_XxxxPropGroupData(int jVarIdx, IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
             var angleVar = il.DeclareLocal(typeof(float));
@@ -51,6 +53,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Ldarg_1),
                         new CodeInstruction(OpCodes.Ldloca_S,angleVar),
+                        new CodeInstruction(OpCodes.Ldloc_S, jVarIdx),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculatePropGroupData",RedirectorUtils.allFlags)),
                         });
                     i += 6;
@@ -84,6 +87,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Ldarg_2),
                         new CodeInstruction(OpCodes.Ldloca_S,angleVar),
+                        new CodeInstruction(OpCodes.Ldloc_S,11),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculatePropGroupData",RedirectorUtils.allFlags)),
                         });
                     i += 6;
@@ -105,7 +109,7 @@ namespace Klyte.PropSwitcher.Overrides
             return instrList;
         }
 
-        public static PropInfo BuildingAI_CalculatePropGroupData(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle)
+        public static PropInfo BuildingAI_CalculatePropGroupData(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle, ushort j)
         {
             angle = 0;
             var finalProp = prop.m_finalProp;
@@ -120,7 +124,7 @@ namespace Klyte.PropSwitcher.Overrides
             Vector3 vector2 = matrix4x2.MultiplyPoint(prop.m_position);
 
             var id = new InstanceID { Building = buildingID };
-            var result = GetTargetInfo(finalProp, ref id, ref angle, ref vector2);
+            var result = GetTargetInfo(finalProp, ref id, ref angle, ref vector2,j);
 
             return result;
         }
@@ -390,12 +394,12 @@ namespace Klyte.PropSwitcher.Overrides
         {
             InstanceID id = default;
             float angle = 0;
-            return GetTargetInfo_internal(info, ref id, ref angle, ref vector3);
+            return GetTargetInfo_internal(info, ref id, ref angle, ref vector3, -1);
         }
 
-        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position) => GetTargetInfo_internal(info, ref id, ref angle, ref position);
+        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx = -1) => GetTargetInfo_internal(info, ref id, ref angle, ref position,  propIdx);
 
-        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position)
+        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx )
         {
             if (info == null || PSPropData.Instance?.Entries == null)
             {
@@ -420,15 +424,17 @@ namespace Klyte.PropSwitcher.Overrides
             else if (id.Building != 0)
             {
                 parentName = BuildingManager.instance.m_buildings.m_buffer[id.Building].Info.name;
-
             }
 
             SimpleXmlDictionary<string, SwitchInfo> switchInfoDictGlobal = null;
             SwitchInfo switchInfo = null;
             SwitchInfo.Item infoItem = null;
-            if (parentName != null && (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) && ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false)) && switchInfo != null)
+            if (parentName != null &&
+                (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) &&
+                ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false))
+                && switchInfo != null)
             {
-                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position);
+                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position, propIdx);
                 if (infoItem != null)
                 {
                     return infoItem.CachedProp;
@@ -438,7 +444,7 @@ namespace Klyte.PropSwitcher.Overrides
             if (PSPropData.Instance.Entries.ContainsKey(info.name))
             {
                 switchInfo = PSPropData.Instance.Entries[info.name];
-                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position);
+                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position, propIdx);
                 if (infoItem != null)
                 {
                     return infoItem.CachedProp;
@@ -448,24 +454,34 @@ namespace Klyte.PropSwitcher.Overrides
             return info;
         }
 
-        private static void TryApplyInfo(ref InstanceID id, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 position)
+        private static void TryApplyInfo(ref InstanceID id, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 position, int propIdx)
         {
             if (switchInfo.SwitchItems.Length > 0)
             {
-                if (switchInfo.SwitchItems.Length == 1)
+                var targetData = switchInfo.SwitchItems;
+                if (propIdx != -1)
                 {
-                    infoItem = switchInfo.SwitchItems[0];
+                    var specificData = switchInfo.SwitchItems.Where(x => x.PrefabIdx == propIdx).ToArray();
+                    targetData = specificData.Length > 0 ? specificData : switchInfo.SwitchItems.Where(x => x.PrefabIdx == -1).ToArray();
+                    if (targetData.Length == 0)
+                    {
+                        return;
+                    }
+                }
+                if (targetData.Length == 1)
+                {
+                    infoItem = targetData[0];
                 }
                 else
                 {
                     var positionSeed = (Mathf.RoundToInt(position.x) >> 2) * (Mathf.RoundToInt(position.z) >> 2);
                     var seed = switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION || id == default || id.Prop != 0 ? positionSeed : (int)id.Index;
                     var r = new Randomizer(seed);
-                    var targetIdx = r.Int32((uint)switchInfo.SwitchItems.Length);
+                    var targetIdx = r.Int32((uint)targetData.Length);
 
                     //   LogUtils.DoWarnLog($"Getting model seed: id = b:{id.Building} ns:{id.NetSegment} nl:{id.NetLane} p:{id.Prop} ({id});pos = {position}; postionSeed: {positionSeed}; targetIdx: {targetIdx}; switchInfo: {switchInfo.GetHashCode().ToString("X16")}; source: {Environment.StackTrace}");
                     //LogUtils.DoWarnLog($"seed =  {id.Index} +{(int)(position.x + position.y + position.z) % 100} = {seed} | targetIdx = {targetIdx} | position = {position}");
-                    infoItem = switchInfo.SwitchItems[targetIdx];
+                    infoItem = targetData[targetIdx];
                 }
 
                 angle += infoItem.RotationOffset * Mathf.Deg2Rad;

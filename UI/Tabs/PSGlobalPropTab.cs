@@ -32,24 +32,26 @@ namespace Klyte.PropSwitcher.UI
         protected void Awake()
         {
             UIPanel layoutPanel = GetComponent<UIPanel>();
-            layoutPanel.padding = new RectOffset(8, 8, 10, 10);
+            layoutPanel.padding = new RectOffset(8, 8, 0, 0);
             layoutPanel.autoLayout = true;
             layoutPanel.autoLayoutDirection = LayoutDirection.Vertical;
-            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 5);
+            layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 3);
             layoutPanel.clipChildren = true;
             var uiHelper = new UIHelperExtension(layoutPanel);
 
-            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 50));
+            KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 30));
             m_actionBar.autoLayout = true;
             m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
-            m_actionBar.padding = new RectOffset(5, 5, 5, 5);
+            m_actionBar.padding = new RectOffset(0, 0, 0, 2);
             m_actionBar.autoFitChildrenVertically = true;
             var m_topHelper = new UIHelperExtension(m_actionBar);
 
-            AddLabel("", m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription);
-            var m_btnDelete = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", false);
-            var m_btnImport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", false);
-            var m_btnExport = AddButtonInEditorRow(m_containerSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", false);
+            AddLabel(Locale.Get("K45_PS_GLOBAL_EDITOR"), m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription, false);
+            m_labelSelectionDescription.size = new Vector2(m_containerSelectionDescription.width - m_containerSelectionDescription.padding.left - m_containerSelectionDescription.padding.right-4, 30) ;
+            m_labelSelectionDescription.padding.top = 8;
+            var m_btnDelete = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", true, 30);
+            var m_btnImport = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", true, 30);
+            var m_btnExport = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", true, 30);
 
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn);
             AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, (x) => { });
@@ -314,33 +316,17 @@ namespace Klyte.PropSwitcher.UI
 
         }
 
-        private string OnChangeValueOut(string currentVal, int arg1, string[] arg2)
-        {
-            if (arg1 >= 0 && arg1 < arg2.Length)
-            {
-                return arg2[arg1];
-            }
-            else
-            {
-                return "";
-            }
-        }
-        private string GetCurrentValueOut() => "";
-        private string[] OnChangeFilterOut(string arg)
-        {
-            if (m_in.text.IsNullOrWhiteSpace())
-            {
-                return new string[0];
-            }
-            return (PropSwitcherMod.Controller.PropsLoaded.ContainsKey(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
+        private string OnChangeValueOut(string currentVal, int arg1, string[] arg2) => arg1 >= 0 && arg1 < arg2.Length ? arg2[arg1] : "";
+        private string[] OnChangeFilterOut(string arg) => m_in.text.IsNullOrWhiteSpace()
+                ? (new string[0])
+                : (PropSwitcherMod.Controller.PropsLoaded.ContainsKey(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
                 //.Where(x => !PSPropData.Instance.Entries.ContainsKey(x.Value))
                 .Where((x) => arg.IsNullOrWhiteSpace() ? true : x.Value.MatchesTerm(arg))
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
-        }
 
-        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName == null ? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER") : prefabName + (PropIndexes.instance.AuthorList.TryGetValue(prefabName.Split('.')[0], out string author) ? "\n" + author : ""), filter, CompareOptions.IgnoreCase) >= 0;
+        private static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER"), filter, CompareOptions.IgnoreCase) >= 0;
 
 
         private string OnChangeValueIn(string currentVal, int arg1, string[] arg2)
