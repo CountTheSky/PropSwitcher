@@ -2,6 +2,8 @@
 <color yellow>- Fixed tree suport</color>
 - Fixed some UI Behavior
 
+<color=yellow>r1 (6/MAR/21):</color> Fixed compatibility with some mods made by kian.zarrin. (and possibly others that deals with trees in roads)
+
 <color #BB8855>Previous version notes: v1.1 (18/JUL/20)</color>
 <color gray>- Added multi-replace support: You can choose a bunch of possible props/trees to replace
 You can configure them to randomize by building/segment, or set it to be fully randomized. Can be very useful to easily generate a randomized forest!

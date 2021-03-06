@@ -208,30 +208,37 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> Transpile_NetLane_RenderInstance(IEnumerable<CodeInstruction> instr, ILGenerator il)
         {
             var instrList = new List<CodeInstruction>(instr);
-            for (int i = 0; i < instrList.Count - 1; i++)
+            for (int i = 0; i < instrList.Count - 2; i++)
             {
-                if (instrList[i].opcode == OpCodes.Brfalse && instrList[i + 1].opcode == OpCodes.Ldloca_S && instrList[i + 1].operand is LocalBuilder builder && builder.LocalIndex == 32 && instrList[i].operand is Label lbl)
+                if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder builder && builder.LocalIndex == 35)
                 {
-                    i++;
-                    while (!instrList[i].labels.Contains(lbl))
+                    for (int j = i; j < instrList.Count - 2; j++)
                     {
-                        instrList.RemoveAt(i);
+                        if (
+                            instrList[j].opcode == OpCodes.Ldloc_S && instrList[j].operand is LocalBuilder builder1 && builder1.LocalIndex == 33
+                            && instrList[j + 1].opcode == OpCodes.Ldc_I4_2
+                            && instrList[j + 2].opcode == OpCodes.Add
+                            )
+                        {
+                            var loopLabel = il.DefineLabel();
+                            instrList[j].labels.Add(loopLabel);
+
+                            instrList.RemoveAt(i);
+                            instrList.RemoveAt(i);
+                            instrList.InsertRange(i, new List<CodeInstruction>
+                            {
+                                 new CodeInstruction(OpCodes.Ldarg_2),
+                                 new CodeInstruction(OpCodes.Ldloc_S,11),
+                                 new CodeInstruction(OpCodes.Ldloc_S,33),
+                                 new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("NetLane_RenderInstance", RedirectorUtils.allFlags) ),
+                                 new CodeInstruction(OpCodes.Stloc_S,35),
+                                 new CodeInstruction(OpCodes.Ldloc_S,35),
+                                 new CodeInstruction(OpCodes.Brfalse,loopLabel),
+                            });
+                            break;
+                        }
                     }
-                    instrList.InsertRange(i, new List<CodeInstruction>
-                    {
-                         new CodeInstruction(OpCodes.Ldarg_1),
-                         new CodeInstruction(OpCodes.Ldarg_2),
-                         new CodeInstruction(OpCodes.Ldarg_3),
-                         new CodeInstruction(OpCodes.Ldloc_S,11),
-                         new CodeInstruction(OpCodes.Ldloc_2),
-                         new CodeInstruction(OpCodes.Ldloc_S,13),
-                         new CodeInstruction(OpCodes.Ldloc_S,14),
-                         new CodeInstruction(OpCodes.Ldloc_S,15),
-                         new CodeInstruction(OpCodes.Ldloc_S,12),
-                         new CodeInstruction(OpCodes.Ldarg_S,16),
-                         new CodeInstruction(OpCodes.Ldarga_S,15),
-                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("NetLane_RenderInstance", RedirectorUtils.allFlags) )
-                    });
+                    break;
                 }
 
             }
@@ -239,46 +246,10 @@ namespace Klyte.PropSwitcher.Overrides
 
             return instrList;
         }
-        public static void NetLane_RenderInstance(RenderManager.CameraInfo cameraInfo, ushort segmentID, uint laneID, int i, bool shallInvert, int num2, int num3, float num4, NetLaneProps.Prop prop, ref int propIndex, ref RenderManager.Instance data)
+        public static TreeInfo NetLane_RenderInstance(TreeInfo treeInfo, ref Randomizer randomizer2, ushort segmentID, int i, int k)
         {
-            ref NetLane thiz = ref NetManager.instance.m_lanes.m_buffer[laneID];
-            var randomizer2 = new Randomizer((int)(laneID + (uint)i));
-            for (int k = 1; k <= num2; k += 2)
-            {
-                if (randomizer2.Int32(100u) < prop.m_probability)
-                {
-                    float t = num4 + k / (float)num2;
-                    Vector3 position = thiz.m_bezier.Position(t);
-                    if (propIndex != -1)
-                    {
-                        position.y = data.m_extraData.GetUShort(num3++) * 0.015625f;
-                    }
-                    position.y += prop.m_position.y;
-                    if (prop.m_position.x != 0f)
-                    {
-                        Vector3 vector3 = thiz.m_bezier.Tangent(t);
-                        if (shallInvert)
-                        {
-                            vector3 = -vector3;
-                        }
-                        vector3.y = 0f;
-                        vector3 = Vector3.Normalize(vector3);
-                        position.x += vector3.z * prop.m_position.x;
-                        position.z -= vector3.x * prop.m_position.x;
-                    }
-                    var finalTree = GetTargetInfoFromNetSegment(prop.m_finalTree, segmentID, i, k); ;
-                    if (finalTree == null)
-                    {
-                        continue;
-                    }
-                    TreeInfo variation2 = finalTree.GetVariation(ref randomizer2);
-                    float scale2 = variation2.m_minScale + randomizer2.Int32(10000u) * (variation2.m_maxScale - variation2.m_minScale) * 0.0001f;
-                    float brightness = variation2.m_minBrightness + randomizer2.Int32(10000u) * (variation2.m_maxBrightness - variation2.m_minBrightness) * 0.0001f;
-                    global::TreeInstance.RenderInstance(cameraInfo, variation2, position, scale2, brightness, RenderManager.DefaultColorLocation);
-                }
-            }
-
-
+            var finalTree = GetTargetInfoFromNetSegment(treeInfo, segmentID, i, k);
+            return finalTree?.GetVariation(ref randomizer2);
         }
         #endregion
 
