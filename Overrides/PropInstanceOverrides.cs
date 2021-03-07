@@ -1,14 +1,12 @@
-﻿using ColossalFramework.Math;
-using Harmony;
+﻿using Harmony;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
-using Klyte.PropSwitcher.Data;
-using Klyte.PropSwitcher.Xml;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
+using static Klyte.PropSwitcher.Xml.SwitchInfo;
 
 namespace Klyte.PropSwitcher.Overrides
 {
@@ -124,7 +122,7 @@ namespace Klyte.PropSwitcher.Overrides
             Vector3 vector2 = matrix4x2.MultiplyPoint(prop.m_position);
 
             var id = new InstanceID { Building = buildingID };
-            var result = GetTargetInfo(finalProp, ref id, ref angle, ref vector2,j);
+            var result = GetTargetInfo(finalProp, ref id, ref angle, ref vector2, j);
 
             return result;
         }
@@ -397,95 +395,8 @@ namespace Klyte.PropSwitcher.Overrides
             return GetTargetInfo_internal(info, ref id, ref angle, ref vector3, -1);
         }
 
-        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx = -1) => GetTargetInfo_internal(info, ref id, ref angle, ref position,  propIdx);
+        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx = -1) => GetTargetInfo_internal(info, ref id, ref angle, ref position, propIdx);
 
-        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx )
-        {
-            if (info == null || PSPropData.Instance?.Entries == null)
-            {
-                return info;
-            }
-            string parentName = null;
-            if (id.NetSegment != 0)
-            {
-                parentName = NetManager.instance.m_segments.m_buffer[id.NetSegment].Info.name;
-
-            }
-            else if (id.NetNode != 0)
-            {
-                parentName = NetManager.instance.m_nodes.m_buffer[id.NetNode].Info.name;
-
-            }
-            else if (id.NetLane != 0)
-            {
-                parentName = NetManager.instance.m_segments.m_buffer[NetManager.instance.m_lanes.m_buffer[id.NetLane].m_segment].Info.name;
-
-            }
-            else if (id.Building != 0)
-            {
-                parentName = BuildingManager.instance.m_buildings.m_buffer[id.Building].Info.name;
-            }
-
-            SimpleXmlDictionary<string, SwitchInfo> switchInfoDictGlobal = null;
-            SwitchInfo switchInfo = null;
-            SwitchInfo.Item infoItem = null;
-            if (parentName != null &&
-                (PSPropData.Instance.PrefabChildEntries.TryGetValue(parentName, out SimpleXmlDictionary<string, SwitchInfo> switchInfoDict) | (PropSwitcherMod.Controller?.GlobalPrefabChildEntries?.TryGetValue(parentName, out switchInfoDictGlobal) ?? false)) &&
-                ((switchInfoDict?.TryGetValue(info.name, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(info.name, out switchInfo) ?? false))
-                && switchInfo != null)
-            {
-                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position, propIdx);
-                if (infoItem != null)
-                {
-                    return infoItem.CachedProp;
-                }
-            }
-
-            if (PSPropData.Instance.Entries.ContainsKey(info.name))
-            {
-                switchInfo = PSPropData.Instance.Entries[info.name];
-                TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position, propIdx);
-                if (infoItem != null)
-                {
-                    return infoItem.CachedProp;
-                }
-            }
-
-            return info;
-        }
-
-        private static void TryApplyInfo(ref InstanceID id, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 position, int propIdx)
-        {
-            if (switchInfo.SwitchItems.Length > 0)
-            {
-                var targetData = switchInfo.SwitchItems;
-                if (propIdx != -1)
-                {
-                    var specificData = switchInfo.SwitchItems.Where(x => x.PrefabIdx == propIdx).ToArray();
-                    targetData = specificData.Length > 0 ? specificData : switchInfo.SwitchItems.Where(x => x.PrefabIdx == -1).ToArray();
-                    if (targetData.Length == 0)
-                    {
-                        return;
-                    }
-                }
-                if (targetData.Length == 1)
-                {
-                    infoItem = targetData[0];
-                }
-                else
-                {
-                    var positionSeed = (Mathf.RoundToInt(position.x) >> 2) * (Mathf.RoundToInt(position.z) >> 2);
-                    var seed = switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION || id == default || id.Prop != 0 ? positionSeed : (int)id.Index;
-                    var r = new Randomizer(seed);
-                    var targetIdx = r.Int32((uint)targetData.Length);
-
-                    //   LogUtils.DoWarnLog($"Getting model seed: id = b:{id.Building} ns:{id.NetSegment} nl:{id.NetLane} p:{id.Prop} ({id});pos = {position}; postionSeed: {positionSeed}; targetIdx: {targetIdx}; switchInfo: {switchInfo.GetHashCode().ToString("X16")}; source: {Environment.StackTrace}");
-                    //LogUtils.DoWarnLog($"seed =  {id.Index} +{(int)(position.x + position.y + position.z) % 100} = {seed} | targetIdx = {targetIdx} | position = {position}");
-                    infoItem = targetData[targetIdx];
-                }
-
-                angle += infoItem.RotationOffset * Mathf.Deg2Rad;
-            }
-        }
+        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx) => PSOverrideCommons.GetTargetInfo_internal(info, ref id, ref angle, ref position, propIdx, out Item result) ? result?.CachedProp : info;
     }
 }

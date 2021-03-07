@@ -1,9 +1,5 @@
-﻿using ColossalFramework;
-using ColossalFramework.Math;
-using ColossalFramework.UI;
-using Klyte.Commons;
+﻿using Klyte.Commons;
 using System;
-using System.Diagnostics;
 using UnityEngine;
 
 namespace Klyte.PropSwitcher.Tools
@@ -19,7 +15,7 @@ namespace Klyte.PropSwitcher.Tools
             if (m_hoverSegment != 0)
             {
                 Color toolColor = m_hoverColor;
-                RenderOverlay(cameraInfo, toolColor,  m_hoverSegment);
+                RenderOverlayUtils.RenderNetSegmentOverlay(cameraInfo, toolColor, m_hoverSegment);
                 return;
             }
 

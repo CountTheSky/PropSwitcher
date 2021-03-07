@@ -10,9 +10,11 @@ namespace Klyte.PropSwitcher.Data
     public class PSPropData : DataExtensorBase<PSPropData>
     {
         [XmlElement("Entries")]
-        public SimpleXmlDictionary<string, SwitchInfo> Entries { get; set; } = new SimpleXmlDictionary<string, SwitchInfo>();
+        public XmlDictionary<PrefabChildEntryKey, SwitchInfo> Entries { get; set; } = new XmlDictionary<PrefabChildEntryKey, SwitchInfo>();
         [XmlElement("PrefabChildEntries")]
-        public SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> PrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>>();
+        public SimpleXmlDictionary<string, XmlDictionary<PrefabChildEntryKey, SwitchInfo>> PrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, XmlDictionary<PrefabChildEntryKey, SwitchInfo>>();
+
+
 
         public override string SaveId { get; } = "K45_PS_BasicData";
 
@@ -20,7 +22,7 @@ namespace Klyte.PropSwitcher.Data
         {
             if (loadedData != null)
             {
-                var keysToRemove = new List<string>();
+                var keysToRemove = new List<PrefabChildEntryKey>();
                 loadedData.Entries.ForEach(x =>
                 {
                     if (x.Value == null || x.Value.SwitchItems.Length == 0)
@@ -39,7 +41,7 @@ namespace Klyte.PropSwitcher.Data
 
                 });
                 keysToRemove.ForEach(x => loadedData.Entries.Remove(x));
-                var keyEntryToRemove = new List<Tuple<string, string>>();
+                var keyEntryToRemove = new List<Tuple<string, PrefabChildEntryKey>>();
                 loadedData.PrefabChildEntries.ForEach(x => x.Value.ForEach(y =>
                  {
                      if (y.Value == null || y.Value.SwitchItems.Length == 0)
@@ -62,5 +64,4 @@ namespace Klyte.PropSwitcher.Data
             }
         }
     }
-
 }

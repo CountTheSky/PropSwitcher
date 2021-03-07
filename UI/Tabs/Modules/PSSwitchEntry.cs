@@ -3,6 +3,7 @@ using ColossalFramework.Globalization;
 using ColossalFramework.UI;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
+using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Xml;
 using System.Linq;
 using UnityEngine;
@@ -18,7 +19,7 @@ namespace Klyte.PropSwitcher.UI
         private UITemplateList<UIPanel> m_replaceSubItems;
         private UIPanel m_subitemContainer;
         private SwitchInfo m_currentLoadedInfo;
-        private string m_currentFromSource;
+        private PrefabChildEntryKey m_currentFromSource;
         private string m_parentPrefabName;
 
         private IPSBaseTab m_mainPanelController;
@@ -74,7 +75,7 @@ namespace Klyte.PropSwitcher.UI
             m_replaceSubItems = new UITemplateList<UIPanel>(m_subitemContainer, DETOUR_SUBITEM_TEMPLATE);
 
 
-            KlyteMonoUtils.LimitWidthAndBox(m_from, m_panel.width * 0.4f, true);
+            KlyteMonoUtils.LimitWidthAndBox(m_from, m_panel.width * 0.35f, true);
 
         }
 
@@ -86,7 +87,7 @@ namespace Klyte.PropSwitcher.UI
                 go.SetActive(false);
                 UIPanel panel = go.AddComponent<UIPanel>();
                 go.AddComponent<PSSwitchEntrySubItem>();
-                panel.width = m_panel.width * .6f;
+                panel.width = m_panel.width * .65f;
 
                 UITemplateUtils.GetTemplateDict()[DETOUR_SUBITEM_TEMPLATE] = panel;
             }
@@ -95,11 +96,11 @@ namespace Klyte.PropSwitcher.UI
 
         private static void CreateRowPlaceHolder(float targetWidth, UIPanel panel, out UILabel column1, out UIPanel actionsContainer)
         {
-            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.4f, 31));
+            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.35f, 31));
             column1.minimumSize = new Vector2(0, 31);
             column1.verticalAlignment = UIVerticalAlignment.Middle;
             column1.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "SubItems", new Vector4(0, 0, targetWidth * 0.6f, 25));
+            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "SubItems", new Vector4(0, 0, targetWidth * 0.65f, 25));
             actionsContainer.minimumSize = new Vector2(0, 25);
             actionsContainer.autoFitChildrenVertically = true;
             actionsContainer.autoLayout = true;
@@ -110,23 +111,25 @@ namespace Klyte.PropSwitcher.UI
 
 
 
-        public void SetData(string parentPrefab, string fromProp, SwitchInfo targetInfo, Color textColor, bool isGlobal)
+        public void SetData(string parentPrefab, PrefabInfo info, PrefabChildEntryKey fromPropSrc, SwitchInfo targetInfo, Color textColor, bool isGlobal)
         {
 
             m_currentLoadedInfo = targetInfo;
-            m_currentFromSource = fromProp;
+            m_currentFromSource = fromPropSrc;
             m_parentPrefabName = parentPrefab;
 
-            m_from.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromProp == y.Value.prefabName).FirstOrDefault().Key ?? fromProp;
+            var fromProp = fromPropSrc.FromContext(info);
+
+            m_from.text = fromPropSrc.ToString(info);
             m_from.suffix = targetInfo.SwitchItems.Length > 1 ? "\n" + Locale.Get("K45_PS_RANDOMIZEBY", targetInfo.SeedSource.ToString()) : "";
-            m_from.tooltip = fromProp + (PropIndexes.instance.AuthorList.TryGetValue(fromProp.Split('.')[0], out string author) ? "\n" + author : TreeIndexes.instance.AuthorList.TryGetValue(fromProp.Split('.')[0], out author) ? "\n" + author : "");
+            m_from.tooltip = fromPropSrc.ToString(info) + (PropIndexes.instance.AuthorList.TryGetValue(fromProp.Split('.')[0], out string author) ? "\n" + author : TreeIndexes.instance.AuthorList.TryGetValue(fromProp.Split('.')[0], out author) ? "\n" + author : "");
             m_from.textColor = textColor;
             m_from.minimumSize = new Vector2(m_from.minimumSize.x, 31 * targetInfo.SwitchItems.Length);
 
             var panels = m_replaceSubItems.SetItemCount(targetInfo.SwitchItems.Length);
             for (int i = 0; i < targetInfo.SwitchItems.Length; i++)
             {
-                panels[i].GetComponent<PSSwitchEntrySubItem>().SetData(targetInfo.SwitchItems[i], textColor, isGlobal, this);
+                panels[i].GetComponent<PSSwitchEntrySubItem>().SetData(targetInfo.SwitchItems[i], textColor, isGlobal, this, fromPropSrc);
             }
 
             m_panel.backgroundSprite = "OptionsScrollbarTrack";
@@ -166,15 +169,14 @@ namespace Klyte.PropSwitcher.UI
 
 
                 var uiHelper = new UIHelperExtension(m_panel, LayoutDirection.Horizontal);
-                KlyteMonoUtils.CreateUIElement(out m_to, m_panel.transform, "ToLbl", new Vector4(0, 0, m_panel.width * 0.6f, 28));
+                KlyteMonoUtils.CreateUIElement(out m_to, m_panel.transform, "ToLbl", new Vector4(0, 0, m_panel.width * 0.46f, 28));
                 m_to.minimumSize = new Vector2(0, 28);
                 m_to.verticalAlignment = UIVerticalAlignment.Middle;
                 m_to.textAlignment = UIHorizontalAlignment.Center;
-                KlyteMonoUtils.CreateUIElement(out m_rotationOffset, m_panel.transform, "RotLbl", new Vector4(0, 0, m_panel.width * 0.1f, 28));
+                KlyteMonoUtils.CreateUIElement(out m_rotationOffset, m_panel.transform, "RotLbl", new Vector4(0, 0, m_panel.width * 0.24f, 28));
                 m_rotationOffset.minimumSize = new Vector2(0, 28);
                 m_rotationOffset.verticalAlignment = UIVerticalAlignment.Middle;
                 m_rotationOffset.textAlignment = UIHorizontalAlignment.Center;
-                m_rotationOffset.suffix = "°";
                 KlyteMonoUtils.CreateUIElement(out m_actionsPanel, m_panel.transform, "ActionsPanel", new Vector4(0, 0, m_panel.width * 0.3f, 28));
                 m_actionsPanel.minimumSize = new Vector2(0, 28);
 
@@ -191,8 +193,8 @@ namespace Klyte.PropSwitcher.UI
                 KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_copyToCity, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Copy, OnCopyToCity, "K45_PS_GLOBALCONFIGURATION_COPYTOCITY", 22);
                 m_copyToCity.name = "GoToFile";
 
-                KlyteMonoUtils.LimitWidthAndBox(m_to, m_panel.width * 0.6f, true);
-                KlyteMonoUtils.LimitWidthAndBox(m_rotationOffset, m_panel.width * 0.1f, true);
+                KlyteMonoUtils.LimitWidthAndBox(m_to, m_panel.width * 0.46f, true);
+                KlyteMonoUtils.LimitWidthAndBox(m_rotationOffset, m_panel.width * 0.24f, true);
                 m_questionMark.Disable();
 
 
@@ -239,16 +241,16 @@ namespace Klyte.PropSwitcher.UI
                 eventParam.Use();
             }
 
-            public void SetData(SwitchInfo.Item targetItem, Color textColor, bool isGlobal, PSSwitchEntry parent)
+            public void SetData(SwitchInfo.Item targetItem, Color textColor, bool isGlobal, PSSwitchEntry parent, PrefabChildEntryKey entryKey)
             {
                 m_mainRow = parent;
                 m_currentPrefabTarget = targetItem.TargetPrefab;
                 m_to.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetItem.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetItem.TargetPrefab ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
-                m_to.tooltip = targetItem.TargetPrefab != null ? targetItem.TargetPrefab + (PropIndexes.instance.AuthorList.TryGetValue(targetItem.TargetPrefab.Split('.')[0], out string author) ? "\n" + author : TreeIndexes.instance.AuthorList.TryGetValue(targetItem.TargetPrefab.Split('.')[0], out author) ? "\n" + author : ""): Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+                m_to.tooltip = targetItem.TargetPrefab != null ? targetItem.TargetPrefab + (PropIndexes.instance.AuthorList.TryGetValue(targetItem.TargetPrefab.Split('.')[0], out string author) ? "\n" + author : TreeIndexes.instance.AuthorList.TryGetValue(targetItem.TargetPrefab.Split('.')[0], out author) ? "\n" + author : "") : Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.textColor = textColor;
 
-                m_rotationOffset.isVisible = targetItem.CachedProp != null;
-                m_rotationOffset.text = targetItem.RotationOffset.ToString("G3");
+                m_rotationOffset.isVisible = targetItem.TargetPrefab != null && (targetItem.CachedProp != null || entryKey.PrefabIdx >= 0);
+                m_rotationOffset.text = string.Join("|", new string[] { (targetItem.CachedProp != null ? $"{targetItem.RotationOffset.ToString("G3")}°" : ""), (entryKey.PrefabIdx >= 0 ? $"({targetItem.PositionOffset.X.ToString("F1")},{targetItem.PositionOffset.Y.ToString("F1")},{targetItem.PositionOffset.Z.ToString("F1")})" : "") }.Where(x => !x.IsNullOrWhiteSpace()).ToArray());
                 m_rotationOffset.textColor = textColor;
 
                 m_gotoFile.isVisible = isGlobal;

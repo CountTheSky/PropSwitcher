@@ -108,6 +108,7 @@
     <Compile Include="commons\Redirectors\UIViewRedirector.cs" />
     <Compile Include="commons\Tools\BasicBuildingTool.cs" />
     <Compile Include="commons\Tools\BasicNetTool.cs" />
+    <Compile Include="commons\Utils\RenderingOverlayUtils.cs" />
     <Compile Include="commons\UI\AVOPreviewRenderer.cs" />
     <Compile Include="commons\UI\BasicRulesList.cs" />
     <Compile Include="commons\UI\DefaultEditorUILib.cs" />
@@ -165,6 +166,7 @@
     <Compile Include="commons\Utils\UtilitiesClasses\Range.cs" />
     <Compile Include="commons\Utils\UtilitiesClasses\SimpleEnumerableList.cs" />
     <Compile Include="commons\Utils\UtilitiesClasses\SimpleNonSequentialList.cs" />
+    <Compile Include="commons\Utils\UtilitiesClasses\XmlDictionary.cs" />
     <Compile Include="commons\Utils\UtilitiesClasses\SimpleXmlDictionary.cs" />
     <Compile Include="commons\Utils\UtilitiesClasses\SimpleXmlDictionaryStructVal.cs" />
     <Compile Include="commons\Utils\UtilitiesClasses\SimpleXmlHashSet.cs" />
@@ -175,10 +177,12 @@
     <Compile Include="commons\Utils\VehicleUtils.cs" />
     <Compile Include="commons\Utils\XmlUtils.cs" />
     <Compile Include="commons\Utils\ZipUtils.cs" />
+    <Compile Include="Data\PrefabChildEntryKey.cs" />
     <Compile Include="Data\PSPropData.cs" />
     <Compile Include="Lib\BasicLib.cs" />
     <Compile Include="ModShared\PSShared.cs" />
     <Compile Include="Overrides\PropInstanceOverrides.cs" />
+    <Compile Include="Overrides\PSOverrideCommons.cs" />
     <Compile Include="Overrides\TreeInstanceOverrides.cs" />
     <Compile Include="PropSwitcherMod.cs" />
     <Compile Include="PSController.cs" />

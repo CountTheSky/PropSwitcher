@@ -40,6 +40,11 @@ namespace Klyte.PropSwitcher.Tools
             base.OnDisable();
         }
 
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            m_parentOnly = false;
+        }
     }
 
 }

@@ -3,6 +3,7 @@ using ColossalFramework.UI;
 using Klyte.Commons;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
+using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Tools;
 using Klyte.PropSwitcher.Xml;
 using System;
@@ -150,9 +151,9 @@ namespace Klyte.PropSwitcher
         }
 
 
-        private static string GetListName<T>(T x) where T : PrefabInfo => x is TreeInfo || (x?.name?.EndsWith("_Data") ?? false) ? $"{x?.GetLocalizedTitle()}" : x?.name ?? "";
+        private static string GetListName<T>(T x) where T : PrefabInfo => x?.GetUncheckedLocalizedTitle();
 
-        public SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> GlobalPrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>>();
+        public SimpleXmlDictionary<string, XmlDictionary<PrefabChildEntryKey, SwitchInfo>> GlobalPrefabChildEntries { get; set; } = new SimpleXmlDictionary<string, XmlDictionary<PrefabChildEntryKey, SwitchInfo>>();
         internal void ReloadPropGlobals()
         {
             LogUtils.DoLog("LOADING BUILDING CONFIG START -----------------------------");
@@ -202,10 +203,10 @@ namespace Klyte.PropSwitcher
         }
 
 
-        private void LoadDescriptorsFromXml(string filePath, FileStream stream, SimpleXmlDictionary<string, SimpleXmlDictionary<string, SwitchInfo>> referenceDic)
+        private void LoadDescriptorsFromXml(string filePath, FileStream stream, SimpleXmlDictionary<string, XmlDictionary<PrefabChildEntryKey, SwitchInfo>> referenceDic)
         {
-            var serializer = new XmlSerializer(typeof(ILibableAsContainer<string, SwitchInfo>));
-            if (serializer.Deserialize(stream) is ILibableAsContainer<string, SwitchInfo> config)
+            var serializer = new XmlSerializer(typeof(ILibableAsContainer<PrefabChildEntryKey, SwitchInfo>));
+            if (serializer.Deserialize(stream) is ILibableAsContainer<PrefabChildEntryKey, SwitchInfo> config)
             {
                 referenceDic[config.SaveName] = config.Data;
                 referenceDic[config.SaveName].Values.ForEach(x => x.m_fileSource = filePath);

@@ -1,7 +1,9 @@
 ﻿using ColossalFramework;
+using Klyte.Commons.Utils;
 using System;
 using System.Linq;
 using System.Xml.Serialization;
+using UnityEngine;
 
 namespace Klyte.PropSwitcher.Xml
 {
@@ -32,8 +34,6 @@ namespace Klyte.PropSwitcher.Xml
 
         public class Item
         {
-            [XmlAttribute("prefabIdx")]
-            public int PrefabIdx { get; set; } = -1;
 
             [XmlAttribute("targetPrefab")]
             public string TargetPrefab { get; set; }
@@ -41,6 +41,8 @@ namespace Klyte.PropSwitcher.Xml
             public ushort WeightInDraws { get; set; }
             [XmlAttribute("rotationOffset")]
             public float RotationOffset { get; set; }
+            [XmlAttribute("positionOffset")]
+            public Vector3Xml PositionOffset { get; set; } = new Vector3Xml();
 
 
 

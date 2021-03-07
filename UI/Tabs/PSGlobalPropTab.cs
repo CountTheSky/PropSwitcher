@@ -47,14 +47,14 @@ namespace Klyte.PropSwitcher.UI
             var m_topHelper = new UIHelperExtension(m_actionBar);
 
             AddLabel(Locale.Get("K45_PS_GLOBAL_EDITOR"), m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription, false);
-            m_labelSelectionDescription.size = new Vector2(m_containerSelectionDescription.width - m_containerSelectionDescription.padding.left - m_containerSelectionDescription.padding.right-4, 30) ;
+            m_labelSelectionDescription.size = new Vector2(m_containerSelectionDescription.width - m_containerSelectionDescription.padding.left - m_containerSelectionDescription.padding.right - 4, 30);
             m_labelSelectionDescription.padding.top = 8;
             var m_btnDelete = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_X, OnClearList, "K45_PS_CLEARLIST", true, 30);
             var m_btnImport = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", true, 30);
             var m_btnExport = AddButtonInEditorRow(m_labelSelectionDescription, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", true, 30);
 
             AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn);
-            AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, (x) => { });
+            AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, OnChangeSeedSource);
             AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, OnChangeValueOut);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             this.m_rotationOffset = m_rotationOffset[0];
@@ -98,9 +98,32 @@ namespace Klyte.PropSwitcher.UI
 
         }
 
+        private void OnChangeSeedSource(bool newVal)
+        {
+            if (!m_in.text.IsNullOrWhiteSpace())
+            {
+
+                _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out TextSearchEntry inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
+                var defaultKey = new PrefabChildEntryKey(inText.prefabName);
+
+                if (!PSPropData.Instance.Entries.ContainsKey(defaultKey))
+                {
+                    PSPropData.Instance.Entries[defaultKey] = new Xml.SwitchInfo();
+                }
+                PSPropData.Instance.Entries[defaultKey].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
+
+                for (int i = 0; i < 32; i++)
+                {
+                    RenderManager.instance.UpdateGroups(i);
+                }
+                UpdateDetoursList();
+            }
+
+        }
+
         private void OnClearList()
         {
-            PSPropData.Instance.Entries = new SimpleXmlDictionary<string, SwitchInfo>();
+            PSPropData.Instance.Entries = new XmlDictionary<PrefabChildEntryKey, SwitchInfo>();
             for (int i = 0; i < 32; i++)
             {
                 RenderManager.instance.UpdateGroups(i);
@@ -159,7 +182,7 @@ namespace Klyte.PropSwitcher.UI
         private static void AddCurrentListToLibrary(string text)
         {
             PSLibPropSettings.Reload();
-            var newItem = new ILibableAsContainer<string, SwitchInfo>
+            var newItem = new ILibableAsContainer<PrefabChildEntryKey, SwitchInfo>
             {
                 Data = PSPropData.Instance.Entries
             };
@@ -234,15 +257,15 @@ namespace Klyte.PropSwitcher.UI
 
         private static void CreateRowPlaceHolder(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out UILabel column3, out UILabel actionsContainer)
         {
-            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.38f, 25));
+            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.33f, 25));
             column1.minimumSize = new Vector2(0, 25);
             column1.verticalAlignment = UIVerticalAlignment.Middle;
             column1.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * 0.38f, 25));
+            KlyteMonoUtils.CreateUIElement(out column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * 0.33f, 25));
             column2.minimumSize = new Vector2(0, 25);
             column2.verticalAlignment = UIVerticalAlignment.Middle;
             column2.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out column3, panel.transform, "RotLbl", new Vector4(0, 0, targetWidth * 0.06f, 25));
+            KlyteMonoUtils.CreateUIElement(out column3, panel.transform, "RotLbl", new Vector4(0, 0, targetWidth * 0.16f, 25));
             column3.minimumSize = new Vector2(0, 25);
             column3.verticalAlignment = UIVerticalAlignment.Middle;
             column3.textAlignment = UIHorizontalAlignment.Center;
@@ -254,13 +277,13 @@ namespace Klyte.PropSwitcher.UI
 
         private void CreateFilterPlaceHolder(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut)
         {
-            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.38f, 25));
+            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.33f, 25));
             KlyteMonoUtils.UiTextFieldDefaultsForm(filterIn);
             filterIn.minimumSize = new Vector2(0, 25);
             filterIn.verticalAlignment = UIVerticalAlignment.Middle;
             filterIn.eventTextChanged += (x, y) => UpdateDetoursList();
             filterIn.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
-            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.38f, 25));
+            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.33f, 25));
             KlyteMonoUtils.UiTextFieldDefaultsForm(fillterOut);
             fillterOut.minimumSize = new Vector2(0, 25);
             fillterOut.verticalAlignment = UIVerticalAlignment.Middle;
@@ -273,13 +296,13 @@ namespace Klyte.PropSwitcher.UI
         public void UpdateDetoursList()
         {
             var keyList = PSPropData.Instance.Entries.Where(x =>
-            (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key))
+            (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key.SourcePrefab))
             && (m_filterOut.text.IsNullOrWhiteSpace() || x.Value.SwitchItems.Any(z => CheckIfPrefabMatchesFilter(m_filterOut.text, z.TargetPrefab)))
-            ).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.Key == y.Value.prefabName).FirstOrDefault().Key ?? x.Key).ToArray();
+            ).OrderBy(x => PropSwitcherMod.Controller.PropsLoaded.Where(y => x.Key.SourcePrefab == y.Value.prefabName).FirstOrDefault().Key ?? x.Key.SourcePrefab).ToArray();
             UIPanel[] rows = m_listItems.SetItemCount(keyList.Length);
             for (int i = 0; i < keyList.Length; i++)
             {
-                rows[i].GetComponent<PSSwitchEntry>().SetData(null, keyList[i].Key, keyList[i].Value, Color.white, false);
+                rows[i].GetComponent<PSSwitchEntry>().SetData(null, null, keyList[i].Key, keyList[i].Value, Color.white, false);
             }
 
         }
@@ -300,13 +323,15 @@ namespace Klyte.PropSwitcher.UI
 
             _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_in.text, out TextSearchEntry inText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_in.text, out inText);
             _ = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out TextSearchEntry outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
+            var defaultKey = new PrefabChildEntryKey(inText.prefabName);
 
-            if (!PSPropData.Instance.Entries.ContainsKey(inText.prefabName))
+
+            if (!PSPropData.Instance.Entries.ContainsKey(defaultKey))
             {
-                PSPropData.Instance.Entries[inText.prefabName] = new Xml.SwitchInfo();
+                PSPropData.Instance.Entries[defaultKey] = new Xml.SwitchInfo();
             }
-            PSPropData.Instance.Entries[inText.prefabName].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText.prefabName, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
-            PSPropData.Instance.Entries[inText.prefabName].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
+            PSPropData.Instance.Entries[defaultKey].Add(m_out.text.IsNullOrWhiteSpace() ? null : outText.prefabName, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
+            PSPropData.Instance.Entries[defaultKey].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
 
             for (int i = 0; i < 32; i++)
             {
@@ -352,12 +377,13 @@ namespace Klyte.PropSwitcher.UI
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray();
-        public SimpleXmlDictionary<string, SwitchInfo> TargetDictionary(string prefabName) => PSPropData.Instance.Entries;
-        public SimpleXmlDictionary<string, SwitchInfo> CreateTargetDictionary(string prefabName) => TargetDictionary(prefabName);
+        public XmlDictionary<PrefabChildEntryKey, SwitchInfo> TargetDictionary(string prefabName) => PSPropData.Instance.Entries;
+        public XmlDictionary<PrefabChildEntryKey, SwitchInfo> CreateTargetDictionary(string prefabName) => TargetDictionary(prefabName);
 
-        public void SetCurrentLoadedData(string fromSource, SwitchInfo info) => SetCurrentLoadedData(fromSource, info, null);
-        public void SetCurrentLoadedData(string fromSource, SwitchInfo info, string target)
+        public void SetCurrentLoadedData(PrefabChildEntryKey fromSource, SwitchInfo info) => SetCurrentLoadedData(fromSource, info, null);
+        public void SetCurrentLoadedData(PrefabChildEntryKey fromSourceSrc, SwitchInfo info, string target)
         {
+            var fromSource = fromSourceSrc.SourcePrefab;
             m_in.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromSource == y.Value.prefabName).FirstOrDefault().Key ?? fromSource ?? "";
             var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
             m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";

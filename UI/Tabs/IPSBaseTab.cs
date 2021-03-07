@@ -1,4 +1,5 @@
 ﻿using Klyte.Commons.Utils;
+using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Xml;
 
 namespace Klyte.PropSwitcher.UI
@@ -6,11 +7,11 @@ namespace Klyte.PropSwitcher.UI
     public interface IPSBaseTab
     {
         void UpdateDetoursList();
-        SimpleXmlDictionary<string, SwitchInfo> TargetDictionary(string prefabName);
-        SimpleXmlDictionary<string, SwitchInfo> CreateTargetDictionary(string prefabName);
+        XmlDictionary<PrefabChildEntryKey, SwitchInfo> TargetDictionary(string prefabName);
+        XmlDictionary<PrefabChildEntryKey, SwitchInfo> CreateTargetDictionary(string prefabName);
 
-        void SetCurrentLoadedData(string fromSource, SwitchInfo info);
+        void SetCurrentLoadedData(PrefabChildEntryKey fromSource, SwitchInfo info);
 
-        void SetCurrentLoadedData(string fromSource, SwitchInfo info, string target);
+        void SetCurrentLoadedData(PrefabChildEntryKey fromSource, SwitchInfo info, string target);
     }
 }
