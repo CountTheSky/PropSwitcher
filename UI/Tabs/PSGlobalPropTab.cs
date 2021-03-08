@@ -8,7 +8,6 @@ using Klyte.PropSwitcher.Libraries;
 using Klyte.PropSwitcher.Xml;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using static Klyte.Commons.UI.DefaultEditorUILib;
 using static Klyte.PropSwitcher.PSController;
 using static Klyte.PropSwitcher.Xml.SwitchInfo;
@@ -30,7 +29,6 @@ namespace Klyte.PropSwitcher.UI
             m_btnImport = AddButtonInEditorRow(reference, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Import, OnImportData, "K45_PS_IMPORTFROMLIB", true, 30);
             m_btnExport = AddButtonInEditorRow(reference, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Export, () => OnExportData(), "K45_PS_EXPORTTOLIB", true, 30);
         }
-        protected override void DoWithFilterRow(float width, UIPanel m_filterRow) => CreateFilterPlaceHolder(width, m_filterRow, out m_filterIn, out m_filterOut);
         protected override List<DetourListParameterContainer> GetFilterLists() => new List<DetourListParameterContainer>()
         {
             new DetourListParameterContainer(PSPropData.Instance.Entries,(x)=>true,false,null)
@@ -47,7 +45,7 @@ namespace Klyte.PropSwitcher.UI
             m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
             m_rotationOffset.text = targetSwitch.RotationOffset.ToString("F3");
             m_seedSource.isChecked = info.SeedSource == RandomizerSeedSource.INSTANCE;
-            m_rotationOffset.parent.isVisible = PropSwitcherMod.Controller.PropsLoaded.ContainsKey(fromSource);
+            m_rotationOffset.parent.isVisible = IsProp(m_in.text);
             UpdateDetoursList(targetSwitch);
         }
 
@@ -194,23 +192,7 @@ namespace Klyte.PropSwitcher.UI
         protected override string GetCurrentInValue() => m_selectedEntry?.SourcePrefab;
         #endregion
 
-        #region General Utility
-        private void CreateFilterPlaceHolder(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut)
-        {
-            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.33f, 25));
-            KlyteMonoUtils.UiTextFieldDefaultsForm(filterIn);
-            filterIn.minimumSize = new Vector2(0, 25);
-            filterIn.verticalAlignment = UIVerticalAlignment.Middle;
-            filterIn.eventTextChanged += (x, y) => UpdateDetoursList();
-            filterIn.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
-            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.33f, 25));
-            KlyteMonoUtils.UiTextFieldDefaultsForm(fillterOut);
-            fillterOut.minimumSize = new Vector2(0, 25);
-            fillterOut.verticalAlignment = UIVerticalAlignment.Middle;
-            fillterOut.eventTextChanged += (x, y) => UpdateDetoursList();
-            fillterOut.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
-        }
-        #endregion
+
         #region Inheritance Hooks
         internal override bool IsPropAvailable(KeyValuePair<string, TextSearchEntry> x) => PSPropData.Instance.Entries.Values.Where(y => y.SwitchItems.Any(z => z.TargetPrefab == x.Value.prefabName)).Count() == 0;
 

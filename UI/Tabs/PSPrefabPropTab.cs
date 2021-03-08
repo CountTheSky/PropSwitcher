@@ -40,7 +40,7 @@ namespace Klyte.PropSwitcher.UI
         protected override void PreMainForm(UIHelperExtension uiHelper)
         {
             base.PreMainForm(uiHelper);
-            AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterParent, OnChangeParentPrefab);
+            AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterParent, OnChangeParentPrefab, 100);
             m_prefab.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
             AddButtonInEditorRow(m_prefab, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Dropper, EnablePickTool, Locale.Get("K45_PS_ENABLETOOLPICKER"), true, 30).zOrder = m_prefab.zOrder + 1;
         }
@@ -58,7 +58,16 @@ namespace Klyte.PropSwitcher.UI
             }
             base.OnAddRule();
         }
-        protected override void DoWithFilterRow(float width, UIPanel m_filterRow) => CreateFilterPlaceHolder(width, m_filterRow, out m_filterIn, out m_filterOut, out m_filterSource);
+        protected override void DoWithFilterRow(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut)
+        {
+            base.DoWithFilterRow(targetWidth, panel, out filterIn, out fillterOut);
+
+            m_filterSource = UIHelperExtension.CloneBasicDropDownNoLabel(Enum.GetNames(typeof(SourceFilterOptions)).Select(x => Locale.Get("K45_PS_FILTERSOURCEITEM", x)).ToArray(), (x) => UpdateDetoursList(), panel);
+            m_filterSource.area = new Vector4(0, 0, targetWidth * (COL_ACTIONS_PROPORTION + COL_OFFSETS_PROPORTION), 28);
+            m_filterSource.textScale = 1;
+            m_filterSource.zOrder = 2;
+
+        }
         public override void UpdateDetoursList(Item targetItem)
         {
             var prefabName = GetCurrentParentPrefab()?.name ?? "";
@@ -214,32 +223,10 @@ namespace Klyte.PropSwitcher.UI
         #endregion
 
         #region General Utility
-        private void CreateFilterPlaceHolder(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut, out UIDropDown filterSource)
-        {
-            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * 0.33f, 25));
-            KlyteMonoUtils.UiTextFieldDefaultsForm(filterIn);
-            filterIn.minimumSize = new Vector2(0, 25);
-            filterIn.verticalAlignment = UIVerticalAlignment.Middle;
-            filterIn.eventTextChanged += (x, y) => UpdateDetoursList();
-            filterIn.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
-            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * 0.33f, 25));
-            KlyteMonoUtils.UiTextFieldDefaultsForm(fillterOut);
-            fillterOut.minimumSize = new Vector2(0, 25);
-            fillterOut.verticalAlignment = UIVerticalAlignment.Middle;
-            fillterOut.eventTextChanged += (x, y) => UpdateDetoursList();
-            fillterOut.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
-
-            filterSource = UIHelperExtension.CloneBasicDropDownNoLabel(Enum.GetNames(typeof(SourceFilterOptions)).Select(x => Locale.Get("K45_PS_FILTERSOURCEITEM", x)).ToArray(), (x) => UpdateDetoursList(), panel);
-            filterSource.area = new Vector4(0, 0, targetWidth * 0.34f, 28);
-            filterSource.textScale = 1;
-            filterSource.zOrder = 2;
-        }
 
         #endregion
 
         #region Inheritance Hooks
-
-
         protected virtual void DoOnUpdateDetoursList(bool isEditable, Item targetItem)
         {
             m_seedSource.isVisible = isEditable;
@@ -251,7 +238,6 @@ namespace Klyte.PropSwitcher.UI
             m_rotationOffset.text = item.RotationOffset.ToString("0.#");
             m_rotationOffset.parent.isVisible = IsProp(fromSource);
         }
-
         #endregion
 
         private enum SourceFilterOptions

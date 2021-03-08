@@ -96,11 +96,11 @@ namespace Klyte.PropSwitcher.UI
 
         private static void CreateRowPlaceHolder(float targetWidth, UIPanel panel, out UILabel column1, out UIPanel actionsContainer)
         {
-            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.35f, 31));
+            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * PSPrefabTabParent.COL_PROPTOREPLACE_PROPORTION, 31));
             column1.minimumSize = new Vector2(0, 31);
             column1.verticalAlignment = UIVerticalAlignment.Middle;
             column1.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "SubItems", new Vector4(0, 0, targetWidth * 0.65f, 25));
+            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "SubItems", new Vector4(0, 0, targetWidth * PSPrefabTabParent.SUBCOL_TOTAL_PROPORTION, 25));
             actionsContainer.minimumSize = new Vector2(0, 25);
             actionsContainer.autoFitChildrenVertically = true;
             actionsContainer.autoLayout = true;
@@ -169,15 +169,15 @@ namespace Klyte.PropSwitcher.UI
 
 
                 var uiHelper = new UIHelperExtension(m_panel, LayoutDirection.Horizontal);
-                KlyteMonoUtils.CreateUIElement(out m_to, m_panel.transform, "ToLbl", new Vector4(0, 0, m_panel.width * 0.46f, 28));
+                KlyteMonoUtils.CreateUIElement(out m_to, m_panel.transform, "ToLbl", new Vector4(0, 0, m_panel.width * PSPrefabTabParent.SUBCOL_PROPREPLACEMENT_PROPORTION, 28));
                 m_to.minimumSize = new Vector2(0, 28);
                 m_to.verticalAlignment = UIVerticalAlignment.Middle;
                 m_to.textAlignment = UIHorizontalAlignment.Center;
-                KlyteMonoUtils.CreateUIElement(out m_rotationOffset, m_panel.transform, "RotLbl", new Vector4(0, 0, m_panel.width * 0.24f, 28));
+                KlyteMonoUtils.CreateUIElement(out m_rotationOffset, m_panel.transform, "RotLbl", new Vector4(0, 0, m_panel.width * PSPrefabTabParent.SUBCOL_OFFSETS_PROPORTION, 28));
                 m_rotationOffset.minimumSize = new Vector2(0, 28);
                 m_rotationOffset.verticalAlignment = UIVerticalAlignment.Middle;
                 m_rotationOffset.textAlignment = UIHorizontalAlignment.Center;
-                KlyteMonoUtils.CreateUIElement(out m_actionsPanel, m_panel.transform, "ActionsPanel", new Vector4(0, 0, m_panel.width * 0.3f, 28));
+                KlyteMonoUtils.CreateUIElement(out m_actionsPanel, m_panel.transform, "ActionsPanel", new Vector4(0, 0, m_panel.width * PSPrefabTabParent.SUBCOL_ACTIONS_PROPORTION, 28));
                 m_actionsPanel.minimumSize = new Vector2(0, 28);
 
                 m_actionsPanel.autoLayout = true;
@@ -193,8 +193,8 @@ namespace Klyte.PropSwitcher.UI
                 KlyteMonoUtils.InitCircledButton(m_actionsPanel, out m_copyToCity, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Copy, OnCopyToCity, "K45_PS_GLOBALCONFIGURATION_COPYTOCITY", 22);
                 m_copyToCity.name = "GoToFile";
 
-                KlyteMonoUtils.LimitWidthAndBox(m_to, m_panel.width * 0.46f, true);
-                KlyteMonoUtils.LimitWidthAndBox(m_rotationOffset, m_panel.width * 0.24f, true);
+                KlyteMonoUtils.LimitWidthAndBox(m_to, m_panel.width * PSPrefabTabParent.SUBCOL_PROPREPLACEMENT_PROPORTION, true);
+                KlyteMonoUtils.LimitWidthAndBox(m_rotationOffset, m_panel.width * PSPrefabTabParent.SUBCOL_OFFSETS_PROPORTION, true);
                 m_questionMark.Disable();
 
 

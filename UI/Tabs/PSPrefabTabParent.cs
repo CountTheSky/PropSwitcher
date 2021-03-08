@@ -18,6 +18,16 @@ namespace Klyte.PropSwitcher.UI
 {
     public abstract class PSPrefabTabParent : UICustomControl
     {
+        public const float COL_PROPTOREPLACE_PROPORTION = .35f;
+        public const float COL_PROPREPLACEMENT_PROPORTION = .35f;
+        public const float COL_OFFSETS_PROPORTION = .2f;
+        public const float COL_ACTIONS_PROPORTION = .1f;
+
+        public const float SUBCOL_TOTAL_PROPORTION = COL_PROPREPLACEMENT_PROPORTION + COL_OFFSETS_PROPORTION + COL_ACTIONS_PROPORTION;
+        public const float SUBCOL_PROPREPLACEMENT_PROPORTION = COL_PROPREPLACEMENT_PROPORTION / SUBCOL_TOTAL_PROPORTION;
+        public const float SUBCOL_OFFSETS_PROPORTION = COL_OFFSETS_PROPORTION / SUBCOL_TOTAL_PROPORTION;
+        public const float SUBCOL_ACTIONS_PROPORTION = COL_ACTIONS_PROPORTION / SUBCOL_TOTAL_PROPORTION;
+
         protected UICheckBox m_seedSource;
         protected UITextField m_in;
         protected UITextField m_out;
@@ -37,14 +47,36 @@ namespace Klyte.PropSwitcher.UI
 
         protected void Awake()
         {
-            UIPanel layoutPanel = GetComponent<UIPanel>();
-            layoutPanel.padding = new RectOffset(8, 8, 0, 0);
+            UIPanel windowPanel = GetComponent<UIPanel>();
+            windowPanel.padding = new RectOffset(3,3, 0, 0);
+            windowPanel.autoLayout = true;
+            windowPanel.autoLayoutDirection = LayoutDirection.Vertical;
+            windowPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 0);
+            windowPanel.clipChildren = true;
+
+            var formHeight = 270f;
+
+            KlyteMonoUtils.CreateUIElement(out UIPanel layoutPanel, windowPanel.transform, "topFormPanel", new Vector4(0, 0, windowPanel.width, formHeight));
+            layoutPanel.padding = new RectOffset(2, 2, 0, 0);
             layoutPanel.autoLayout = true;
             layoutPanel.autoLayoutDirection = LayoutDirection.Vertical;
             layoutPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 3);
             layoutPanel.clipChildren = true;
-            var uiHelper = new UIHelperExtension(layoutPanel);
+            CreateTopForm(layoutPanel);
 
+            KlyteMonoUtils.CreateUIElement(out UIPanel listPanel, windowPanel.transform, "listPanel", new Vector4(0, 0, windowPanel.width, windowPanel.height - formHeight - 40));
+            listPanel.padding = new RectOffset(2, 2, 0, 0);
+            listPanel.autoLayout = true;
+            listPanel.autoLayoutDirection = LayoutDirection.Vertical;
+            listPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 3);
+            listPanel.clipChildren = true;
+            CreateList(listPanel);
+
+            UpdateDetoursList();
+        }
+
+        private void CreateTopForm(UIPanel layoutPanel)
+        {
             KlyteMonoUtils.CreateUIElement(out m_actionBar, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, layoutPanel.width, 30));
             m_actionBar.autoLayout = true;
             m_actionBar.autoLayoutDirection = LayoutDirection.Vertical;
@@ -58,19 +90,24 @@ namespace Klyte.PropSwitcher.UI
 
             AddActionButtons(m_labelSelectionDescription);
 
+            var uiHelper = new UIHelperExtension(layoutPanel);
+
             PreMainForm(uiHelper);
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn);
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, OnChangeValueOut);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn,100);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, OnChangeValueOut,100);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             DoExtraInputOptions(uiHelper);
 
             this.m_rotationOffset = m_rotationOffset[0];
             Destroy(m_rotationOffset[1]);
             m_addButton = uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule) as UIButton;
+            this.m_rotationOffset.parent.isVisible = false;
 
             m_in.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
             m_out.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
-
+        }
+        private void CreateList(UIPanel layoutPanel)
+        {
             float listContainerWidth = layoutPanel.width - 20;
 
             KlyteMonoUtils.CreateUIElement(out m_titleRow, layoutPanel.transform, "topBar", new UnityEngine.Vector4(0, 0, listContainerWidth, 25));
@@ -82,9 +119,9 @@ namespace Klyte.PropSwitcher.UI
             m_filterRow.autoLayout = true;
             m_filterRow.wrapLayout = false;
             m_filterRow.autoLayoutDirection = LayoutDirection.Horizontal;
-            DoWithFilterRow(listContainerWidth - 20, m_filterRow);
+            DoWithFilterRow(listContainerWidth, m_filterRow, out m_filterIn, out m_filterOut);
 
-            CreateRowPlaceHolder(listContainerWidth - 20, m_titleRow, out UILabel col1Title, out UILabel col2Title, out UILabel col3Title, out UILabel col4Title);
+            CreateRowPlaceHolder(listContainerWidth, m_titleRow, out UILabel col1Title, out UILabel col2Title, out UILabel col3Title, out UILabel col4Title);
             KlyteMonoUtils.LimitWidthAndBox(col1Title, col1Title.width, true);
             KlyteMonoUtils.LimitWidthAndBox(col2Title, col2Title.width, true);
             KlyteMonoUtils.LimitWidthAndBox(col3Title, col3Title.width, true);
@@ -94,19 +131,17 @@ namespace Klyte.PropSwitcher.UI
             col3Title.text = Locale.Get("K45_PS_ROTATION_TITLE");
             col4Title.text = Locale.Get("K45_PS_ACTIONS_TITLE");
 
-            KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "listContainer", new UnityEngine.Vector4(0, 0, listContainerWidth, 370));
+            KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "listContainer", new UnityEngine.Vector4(0, 0, listContainerWidth, layoutPanel.height - 50));
 
-            KlyteMonoUtils.CreateScrollPanel(m_listContainer, out m_detourList, out _, m_listContainer.width - 20, m_listContainer.height);
+            KlyteMonoUtils.CreateScrollPanel(m_listContainer, out m_detourList, out _, listContainerWidth, m_listContainer.height);
             m_detourList.backgroundSprite = "GenericPanel";
             m_detourList.autoLayout = true;
             m_detourList.autoLayoutPadding = new RectOffset(0, 0, 0, 2);
             m_detourList.autoLayoutDirection = LayoutDirection.Vertical;
             PSSwitchEntry.CreateTemplateDetourItem(m_detourList.width);
             m_listItems = new UITemplateList<UIPanel>(m_detourList, PSSwitchEntry.DETOUR_ITEM_TEMPLATE);
-
-            UpdateDetoursList();
-            this.m_rotationOffset.parent.isVisible = false;
         }
+
         protected abstract void AddActionButtons(UILabel reference);
         protected virtual void PreMainForm(UIHelperExtension uiHelper) { }
         protected virtual void DoExtraInputOptions(UIHelperExtension uiHelper) => AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, OnChangeSeedSource);
@@ -202,25 +237,39 @@ namespace Klyte.PropSwitcher.UI
 
         protected void CreateRowPlaceHolder(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out UILabel column3, out UILabel actionsContainer)
         {
-            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * 0.33f, 25));
+            KlyteMonoUtils.CreateUIElement(out column1, panel.transform, "FromLbl", new Vector4(0, 0, targetWidth * COL_PROPTOREPLACE_PROPORTION, 25));
             column1.minimumSize = new Vector2(0, 25);
             column1.verticalAlignment = UIVerticalAlignment.Middle;
             column1.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * 0.33f, 25));
+            KlyteMonoUtils.CreateUIElement(out column2, panel.transform, "ToLbl", new Vector4(0, 0, targetWidth * COL_PROPREPLACEMENT_PROPORTION, 25));
             column2.minimumSize = new Vector2(0, 25);
             column2.verticalAlignment = UIVerticalAlignment.Middle;
             column2.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out column3, panel.transform, "RotLbl", new Vector4(0, 0, targetWidth * 0.16f, 25));
+            KlyteMonoUtils.CreateUIElement(out column3, panel.transform, "RotLbl", new Vector4(0, 0, targetWidth * COL_OFFSETS_PROPORTION, 25));
             column3.minimumSize = new Vector2(0, 25);
             column3.verticalAlignment = UIVerticalAlignment.Middle;
             column3.textAlignment = UIHorizontalAlignment.Center;
-            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "ActionsPanel", new Vector4(0, 0, targetWidth * 0.18f, 25));
+            KlyteMonoUtils.CreateUIElement(out actionsContainer, panel.transform, "ActionsPanel", new Vector4(0, 0, targetWidth * COL_ACTIONS_PROPORTION, 25));
             actionsContainer.minimumSize = new Vector2(0, 25);
             actionsContainer.verticalAlignment = UIVerticalAlignment.Middle;
             actionsContainer.textAlignment = UIHorizontalAlignment.Center;
         }
 
-        protected abstract void DoWithFilterRow(float width, UIPanel m_filterRow);
+        protected virtual void DoWithFilterRow(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut)
+        {
+            KlyteMonoUtils.CreateUIElement(out filterIn, panel.transform, "FromFld", new Vector4(0, 0, targetWidth * COL_PROPTOREPLACE_PROPORTION, 25));
+            KlyteMonoUtils.UiTextFieldDefaultsForm(filterIn);
+            filterIn.minimumSize = new Vector2(0, 25);
+            filterIn.verticalAlignment = UIVerticalAlignment.Middle;
+            filterIn.eventTextChanged += (x, y) => UpdateDetoursList();
+            filterIn.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
+            KlyteMonoUtils.CreateUIElement(out fillterOut, panel.transform, "ToFld", new Vector4(0, 0, targetWidth * COL_PROPREPLACEMENT_PROPORTION, 25));
+            KlyteMonoUtils.UiTextFieldDefaultsForm(fillterOut);
+            fillterOut.minimumSize = new Vector2(0, 25);
+            fillterOut.verticalAlignment = UIVerticalAlignment.Middle;
+            fillterOut.eventTextChanged += (x, y) => UpdateDetoursList();
+            fillterOut.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
+        }
         public void UpdateDetoursList() => UpdateDetoursList(GetCurrentEditingItem());
         public virtual void UpdateDetoursList(Item currentItem)
         {
