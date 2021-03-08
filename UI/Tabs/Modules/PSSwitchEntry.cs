@@ -22,15 +22,15 @@ namespace Klyte.PropSwitcher.UI
         private PrefabChildEntryKey m_currentFromSource;
         private string m_parentPrefabName;
 
-        private IPSBaseTab m_mainPanelController;
+        private PSPrefabTabParent m_mainPanelController;
 
-        public IPSBaseTab MainPanelController
+        public PSPrefabTabParent MainPanelController
         {
             get
             {
                 if (m_mainPanelController == null)
                 {
-                    m_mainPanelController = GetComponentInParent<IPSBaseTab>();
+                    m_mainPanelController = GetComponentInParent<PSPrefabTabParent>();
                 }
 
                 return m_mainPanelController;

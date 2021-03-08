@@ -191,8 +191,11 @@
     <Compile Include="Tools\RoadSegmentTool.cs" />
     <Compile Include="UI\Tabs\IPSBaseTab.cs" />
     <Compile Include="UI\Tabs\Modules\PSSwitchEntry.cs" />
+    <Compile Include="UI\Tabs\PSBuildingPropTab.cs" />
+    <Compile Include="UI\Tabs\PSNetPropTab.cs" />
     <Compile Include="UI\Tabs\PSPrefabPropTab.cs" />
     <Compile Include="UI\Tabs\PSGlobalPropTab.cs" />
+    <Compile Include="UI\Tabs\PSPrefabTabParent.cs" />
     <Compile Include="Xml\SwitchInfo.cs" />
   </ItemGroup>
   <ProjectExtensions>
