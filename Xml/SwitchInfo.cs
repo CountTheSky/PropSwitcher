@@ -3,7 +3,6 @@ using Klyte.Commons.Utils;
 using System;
 using System.Linq;
 using System.Xml.Serialization;
-using UnityEngine;
 
 namespace Klyte.PropSwitcher.Xml
 {
@@ -14,7 +13,8 @@ namespace Klyte.PropSwitcher.Xml
         public string Old_TargetPrefab
         {
             get => null;
-            set {
+            set
+            {
                 if (!value.IsNullOrWhiteSpace())
                 {
                     LegacyLoaded = true;
@@ -41,7 +41,7 @@ namespace Klyte.PropSwitcher.Xml
             public ushort WeightInDraws { get; set; }
             [XmlAttribute("rotationOffset")]
             public float RotationOffset { get; set; }
-            [XmlAttribute("positionOffset")]
+            [XmlElement("positionOffset")]
             public Vector3Xml PositionOffset { get; set; } = new Vector3Xml();
 
 
@@ -51,7 +51,8 @@ namespace Klyte.PropSwitcher.Xml
 
             public PropInfo CachedProp
             {
-                get {
+                get
+                {
                     if (TargetPrefab != m_lastTryTargetProp)
                     {
                         m_cachedPropInfo = PrefabCollection<PropInfo>.FindLoaded(TargetPrefab ?? "");
@@ -67,7 +68,8 @@ namespace Klyte.PropSwitcher.Xml
 
             public TreeInfo CachedTree
             {
-                get {
+                get
+                {
                     if (TargetPrefab != m_lastTryTargetTree)
                     {
                         m_cachedTreeInfo = PrefabCollection<TreeInfo>.FindLoaded(TargetPrefab ?? "");
@@ -85,7 +87,15 @@ namespace Klyte.PropSwitcher.Xml
             POSITION
         }
 
-        internal void Add(string newPrefab, float rotationOffset) => SwitchItems = SwitchItems.Where(x => x.TargetPrefab != newPrefab).Union(new Item[] { new Item { TargetPrefab = newPrefab, RotationOffset = rotationOffset } }).ToArray();
+        internal Item Add(string newPrefab, float rotationOffset)
+        {
+            var newItem = new Item { TargetPrefab = newPrefab, RotationOffset = rotationOffset };
+            SwitchItems = SwitchItems.Where(x => x.TargetPrefab != newPrefab).Union(new Item[] { newItem }).ToArray();
+            return newItem;
+        }
+
+        internal Item Get(string newPrefab) => SwitchItems.Where(x => x.TargetPrefab == newPrefab).FirstOrDefault();
+
         internal void Remove(string prefabName) => SwitchItems = SwitchItems.Where(x => x.TargetPrefab != prefabName).ToArray();
     }
 }

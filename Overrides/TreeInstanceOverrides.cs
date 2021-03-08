@@ -199,19 +199,16 @@ namespace Klyte.PropSwitcher.Overrides
                                  new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetLane", RedirectorUtils.allFlags) ),
 
                             };
-                            if (selTreeIdx >= 0)
+                            if (selTreeIdx < 0)
                             {
-                                codeList.AddRange(new CodeInstruction[] {
+                                selTreeIdx = il.DeclareLocal(typeof(TreeInfo)).LocalIndex;
+                            }
+                            codeList.AddRange(new CodeInstruction[] {
                                     new CodeInstruction(OpCodes.Stloc_S,selTreeIdx),
                                     new CodeInstruction(OpCodes.Ldloc_S,selTreeIdx),
                                     new CodeInstruction(OpCodes.Brfalse,loopLabel),
                                     new CodeInstruction(OpCodes.Ldloc_S, selTreeIdx)
                                 });
-                            }
-                            else
-                            {
-                                codeList.Add(new CodeInstruction(OpCodes.Brfalse, loopLabel));
-                            }
 
                             instrList.InsertRange(i - 1, codeList);
                             break;

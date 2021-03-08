@@ -258,7 +258,7 @@ namespace Klyte.PropSwitcher.UI
                 m_removeButton.isVisible = !isGlobal;
                 m_copyToCity.isVisible = isGlobal;
 
-                m_panel.backgroundSprite = m_panel.zOrder % 2 == 0 ? "" : "GenericPanelDark";
+                m_panel.backgroundSprite = m_panel.zOrder % 2 == 1 ? "" : "GenericPanelDark";
             }
         }
 
