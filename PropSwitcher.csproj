@@ -108,6 +108,7 @@
     <Compile Include="commons\Redirectors\UIViewRedirector.cs" />
     <Compile Include="commons\Tools\BasicBuildingTool.cs" />
     <Compile Include="commons\Tools\BasicNetTool.cs" />
+    <Compile Include="commons\UI\UIPagingBar.cs" />
     <Compile Include="commons\Utils\RenderingOverlayUtils.cs" />
     <Compile Include="commons\UI\AVOPreviewRenderer.cs" />
     <Compile Include="commons\UI\BasicRulesList.cs" />

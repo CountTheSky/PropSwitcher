@@ -135,7 +135,11 @@ namespace Klyte.PropSwitcher.UI
             m_panel.backgroundSprite = "OptionsScrollbarTrack";
         }
 
-        private void RemoveItself() => MainPanelController.TargetDictionary(m_parentPrefabName)?.Remove(m_currentFromSource);
+        private void RemoveItself()
+        {
+            MainPanelController.TargetDictionary(m_parentPrefabName)?.Remove(m_currentFromSource);
+            MainPanelController.ForceUpdate();
+        }
 
         public class PSSwitchEntrySubItem : UICustomControl
         {
@@ -223,11 +227,7 @@ namespace Klyte.PropSwitcher.UI
                     m_mainRow.RemoveItself();
                 }
 
-                for (int i = 0; i < 32; i++)
-                {
-                    RenderManager.instance.UpdateGroups(i);
-                }
-
+                StartCoroutine(PSPrefabTabParent.UpdateAllRenderGroups());
                 m_mainRow.MainPanelController.UpdateDetoursList();
                 eventParam.Use();
             }
@@ -245,7 +245,7 @@ namespace Klyte.PropSwitcher.UI
             {
                 m_mainRow = parent;
                 m_currentPrefabTarget = targetItem.TargetPrefab;
-                m_to.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetItem.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetItem.TargetPrefab ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+                m_to.text = PropSwitcherMod.Controller.PropsLoaded?.Union(PropSwitcherMod.Controller.TreesLoaded)?.Where(y => targetItem.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetItem.TargetPrefab ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.tooltip = targetItem.TargetPrefab != null ? targetItem.TargetPrefab + (PropIndexes.instance.AuthorList.TryGetValue(targetItem.TargetPrefab.Split('.')[0], out string author) ? "\n" + author : TreeIndexes.instance.AuthorList.TryGetValue(targetItem.TargetPrefab.Split('.')[0], out author) ? "\n" + author : "") : Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
                 m_to.textColor = textColor;
 

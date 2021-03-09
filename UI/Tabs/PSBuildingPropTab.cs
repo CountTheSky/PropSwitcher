@@ -54,8 +54,8 @@ namespace Klyte.PropSwitcher.UI
         {
             BuildingInfo prefab = GetCurrentParentPrefab();
 
-            return PropSwitcherMod.Controller.PropsLoaded
-                    .Union(PropSwitcherMod.Controller.TreesLoaded)
+            return PropSwitcherMod.Controller.PropsLoaded?
+                    .Union(PropSwitcherMod.Controller.TreesLoaded)?
                     .Where(x => IsPropAvailable(x))
                     .Where((x) => arg.IsNullOrWhiteSpace() ? true : x.Value.MatchesTerm(arg))
                     .Select(x => x.Key)
@@ -63,7 +63,7 @@ namespace Klyte.PropSwitcher.UI
                 .Union(
                     currentReplacementSpotList.Keys.Where(x => LocaleManager.cultureInfo.CompareInfo.IndexOf(x, arg, CompareOptions.IgnoreCase) >= 0)
                 )
-                .ToArray();
+                .ToArray() ?? new string[0];
         }
         protected override PrefabChildEntryKey GetEntryFor(string v) =>
             v.StartsWith("Prop #") && currentReplacementSpotList.TryGetValue(v, out Tuple<int, Vector3, PrefabInfo> item)

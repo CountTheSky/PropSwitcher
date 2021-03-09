@@ -1,11 +1,13 @@
 ﻿using ColossalFramework;
 using ColossalFramework.Globalization;
+using ColossalFramework.Threading;
 using ColossalFramework.UI;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Xml;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -40,15 +42,21 @@ namespace Klyte.PropSwitcher.UI
         protected UIPanel m_titleRow;
         protected UIPanel m_filterRow;
         protected UIButton m_addButton;
+        private UIPanel m_listLoadingPlaceholder;
+        private UIPanel m_listContainer;
 
+        protected UIPagingBar m_pagebar;
         protected PrefabChildEntryKey m_selectedEntry;
+        private List<Tuple<DetourListParameterContainer, Tuple<PrefabChildEntryKey, SwitchInfo>[]>> m_cachedEntries;
+        private int m_cachedEntriesHashSrc;
+
         protected abstract string TitleLocale { get; }
         protected abstract bool HasParentPrefab { get; }
 
         protected void Awake()
         {
             UIPanel windowPanel = GetComponent<UIPanel>();
-            windowPanel.padding = new RectOffset(3,3, 0, 0);
+            windowPanel.padding = new RectOffset(3, 3, 0, 0);
             windowPanel.autoLayout = true;
             windowPanel.autoLayoutDirection = LayoutDirection.Vertical;
             windowPanel.autoLayoutPadding = new RectOffset(0, 0, 0, 0);
@@ -72,8 +80,17 @@ namespace Klyte.PropSwitcher.UI
             listPanel.clipChildren = true;
             CreateList(listPanel);
 
+
+
+            KlyteMonoUtils.CreateUIElement(out UIPanel pagePanel, windowPanel.transform, "listPanel", new Vector4(0, 0, windowPanel.width, 40));
+
+            m_pagebar = pagePanel.gameObject.AddComponent<UIPagingBar>();
+            m_pagebar.OnGoToPage += (x) => UpdateDetoursList();
+
             UpdateDetoursList();
         }
+
+
 
         private void CreateTopForm(UIPanel layoutPanel)
         {
@@ -93,8 +110,8 @@ namespace Klyte.PropSwitcher.UI
             var uiHelper = new UIHelperExtension(layoutPanel);
 
             PreMainForm(uiHelper);
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn,100);
-            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, OnChangeValueOut,100);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHFROM"), uiHelper, out m_in, out _, OnChangeFilterIn, OnChangeValueIn, 100);
+            AddFilterableInput(Locale.Get("K45_PS_SWITCHTO"), uiHelper, out m_out, out _, OnChangeFilterOut, OnChangeValueOut, 100);
             AddVector2Field(Locale.Get("K45_PS_ROTATIONOFFSET"), out UITextField[] m_rotationOffset, uiHelper, (x) => { });
             DoExtraInputOptions(uiHelper);
 
@@ -106,6 +123,7 @@ namespace Klyte.PropSwitcher.UI
             m_in.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
             m_out.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
         }
+
         private void CreateList(UIPanel layoutPanel)
         {
             float listContainerWidth = layoutPanel.width - 20;
@@ -131,7 +149,7 @@ namespace Klyte.PropSwitcher.UI
             col3Title.text = Locale.Get("K45_PS_ROTATION_TITLE");
             col4Title.text = Locale.Get("K45_PS_ACTIONS_TITLE");
 
-            KlyteMonoUtils.CreateUIElement(out UIPanel m_listContainer, layoutPanel.transform, "listContainer", new UnityEngine.Vector4(0, 0, listContainerWidth, layoutPanel.height - 50));
+            KlyteMonoUtils.CreateUIElement(out m_listContainer, layoutPanel.transform, "listContainer", new UnityEngine.Vector4(0, 0, listContainerWidth, layoutPanel.height - 50));
 
             KlyteMonoUtils.CreateScrollPanel(m_listContainer, out m_detourList, out _, listContainerWidth, m_listContainer.height);
             m_detourList.backgroundSprite = "GenericPanel";
@@ -140,6 +158,19 @@ namespace Klyte.PropSwitcher.UI
             m_detourList.autoLayoutDirection = LayoutDirection.Vertical;
             PSSwitchEntry.CreateTemplateDetourItem(m_detourList.width);
             m_listItems = new UITemplateList<UIPanel>(m_detourList, PSSwitchEntry.DETOUR_ITEM_TEMPLATE);
+
+            KlyteMonoUtils.CreateUIElement(out m_listLoadingPlaceholder, layoutPanel.transform, "listPanelLoadingPlaceholder", new Vector4(0, 0, listContainerWidth, layoutPanel.height - 50));
+            m_listLoadingPlaceholder.padding = new RectOffset(2, 2, 0, 0);
+            m_listLoadingPlaceholder.autoLayout = true;
+            m_listLoadingPlaceholder.autoLayoutDirection = LayoutDirection.Vertical;
+            m_listLoadingPlaceholder.autoLayoutPadding = new RectOffset(0, 0, 0, 3);
+            m_listLoadingPlaceholder.clipChildren = true;
+            KlyteMonoUtils.CreateUIElement(out UILabel labelLoadingPlaceholder, m_listLoadingPlaceholder.transform, "listPanelLoadingPlaceholderLabel", new Vector4(0, 0, m_listLoadingPlaceholder.width, m_listLoadingPlaceholder.height));
+            labelLoadingPlaceholder.verticalAlignment = UIVerticalAlignment.Middle;
+            labelLoadingPlaceholder.textAlignment = UIHorizontalAlignment.Center;
+            labelLoadingPlaceholder.text = Locale.Get("LOADSTATUS", "Loading");
+            labelLoadingPlaceholder.textScale = 3f;
+            m_listLoadingPlaceholder.isVisible = false;
         }
 
         protected abstract void AddActionButtons(UILabel reference);
@@ -158,6 +189,7 @@ namespace Klyte.PropSwitcher.UI
             {
                 RenderManager.instance.UpdateGroups(i);
             }
+            m_cachedEntries = null;
             UpdateDetoursList();
         }
 
@@ -165,20 +197,20 @@ namespace Klyte.PropSwitcher.UI
         protected virtual string[] OnChangeFilterOut(string arg) =>
             m_in.text.IsNullOrWhiteSpace()
                 ? (new string[0])
-                : (IsProp(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)
+                : (IsProp(m_in.text) ? PropSwitcherMod.Controller.PropsLoaded : PropSwitcherMod.Controller.TreesLoaded)?
                 .Where((x) => arg.IsNullOrWhiteSpace() ? true : x.Value.MatchesTerm(arg))
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
-                .ToArray();
+                .ToArray() ?? new string[0];
         protected virtual string OnChangeValueOut(string currentVal, int arg1, string[] arg2) => arg1 >= 0 && arg1 < arg2.Length ? arg2[arg1] : "";
         protected virtual string[] OnChangeFilterIn(string arg) =>
-            PropSwitcherMod.Controller.PropsLoaded
-            .Union(PropSwitcherMod.Controller.TreesLoaded)
+            PropSwitcherMod.Controller.PropsLoaded?
+            .Union(PropSwitcherMod.Controller.TreesLoaded)?
                 .Where(x => IsPropAvailable(x))
                 .Where((x) => arg.IsNullOrWhiteSpace() ? true : x.Value.MatchesTerm(arg))
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
-                .ToArray();
+                .ToArray() ?? new string[0];
         protected virtual string OnChangeValueIn(string sel, int arg1, string[] arg2)
         {
             m_out.text = "";
@@ -222,17 +254,34 @@ namespace Klyte.PropSwitcher.UI
                 }, x => true);
                 return;
             }
+            StartCoroutine(AddRuleAsync(currentEditingKey, currentList, targetValue));
+        }
+
+        private IEnumerator AddRuleAsync(PrefabChildEntryKey currentEditingKey, XmlDictionary<PrefabChildEntryKey, SwitchInfo> currentList, string targetValue)
+        {
+            yield return 0;
             if (!currentList.ContainsKey(currentEditingKey))
             {
                 currentList[currentEditingKey] = new Xml.SwitchInfo();
             }
-            var currentItem = currentList[currentEditingKey].Add(targetValue, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
-            WriteExtraSettings(currentList[currentEditingKey], currentItem);
+            using var saveThread = ThreadHelper.CreateThread(() =>
+            {
+                var currentItem = currentList[currentEditingKey].Add(targetValue, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
+                WriteExtraSettings(currentList[currentEditingKey], currentItem);
+                m_cachedEntries = null;
+                ThreadHelper.dispatcher.Dispatch(() => UpdateDetoursList(currentItem));
+            }, true);
+            yield return new WaitWhile(() => saveThread.isAlive);
+            yield return UpdateAllRenderGroups();
+        }
+
+        public static IEnumerator UpdateAllRenderGroups()
+        {
+            yield return 0;
             for (int i = 0; i < 32; i++)
             {
                 RenderManager.instance.UpdateGroups(i);
             }
-            UpdateDetoursList(currentItem);
         }
 
         protected void CreateRowPlaceHolder(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out UILabel column3, out UILabel actionsContainer)
@@ -270,32 +319,145 @@ namespace Klyte.PropSwitcher.UI
             fillterOut.eventTextChanged += (x, y) => UpdateDetoursList();
             fillterOut.tooltip = Locale.Get("K45_PS_TYPETOFILTERTOOLTIP");
         }
+
+        internal void ForceUpdate()
+        {
+            m_cachedEntries = null;
+            UpdateDetoursList();
+        }
+
         public void UpdateDetoursList() => UpdateDetoursList(GetCurrentEditingItem());
         public virtual void UpdateDetoursList(Item currentItem)
         {
-            var parent = GetCurrentParentPrefabInfo();
-            var entries = GetFilterLists().Select(w => Tuple.New(w,
-                w.list?
-                    .Where(x =>
-                        w.itemAdditionalValidation(x)
-                        && (m_filterIn.text.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(m_filterIn.text, x.Key.ToString(parent)))
-                        && (m_filterOut.text.IsNullOrWhiteSpace() || x.Value.SwitchItems.Any(z => CheckIfPrefabMatchesFilter(m_filterOut.text, z.CachedProp?.GetUncheckedLocalizedTitle() ?? z.CachedTree?.GetUncheckedLocalizedTitle() ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER"))))
-                     )
-                    .Select(x => Tuple.New(x.Key, x.Value))
-                    .OrderBy(x => x.First.ToString(parent))
-                    .OrderBy(x => x.First.PrefabIdx < 0 ? 99999 : x.First.PrefabIdx)
-                    .ToArray()
-                 ?? new Tuple<PrefabChildEntryKey, SwitchInfo>[0]
-                ));
+            m_filterCooldown = 5;
+            StartCoroutine(BuildTableAsync());
+        }
 
-            var rows = m_listItems.SetItemCount(entries.Sum(x => x.Second.Length));
-            var counter = 0;
-            foreach (var entry in entries)
+        private int m_filterCooldown;
+        private bool m_enteredBuildTable = false;
+        private IEnumerator BuildTableAsync()
+        {
+            if (m_enteredBuildTable)
             {
-                BuildItems(ref rows, entry.Second, counter, entry.First.differColor, entry.First.localList);
-                counter += entry.Second.Length;
+                yield break;
+            }
+            m_enteredBuildTable = true;
+            m_listContainer.isVisible = false;
+            m_listLoadingPlaceholder.isVisible = true;
+        resetLbl: while (m_filterCooldown > 0)
+            {
+                m_filterCooldown--;
+                yield return 0;
+            }
+            m_listContainer.isVisible = false;
+            m_listLoadingPlaceholder.isVisible = true;
+            var parent = GetCurrentParentPrefabInfo();
+            var currentHashSrc = GetCurrentFilterCacheId();
+            var filterIn = m_filterIn.text;
+            var filterOut = m_filterOut.text;
+            yield return 0;
+            if (m_cachedEntries is null || m_cachedEntriesHashSrc != currentHashSrc)
+            {
+                yield return RebuildFilterCache(parent, currentHashSrc, filterIn, filterOut);
+                if (m_filterCooldown > 0)
+                {
+                    goto resetLbl;
+                }
+                BuildTable();
+            }
+            else if (!m_cachedEntriesBeingBuilt)
+            {
+                BuildTable();
+            }
+            m_enteredBuildTable = false;
+        }
+
+        private IEnumerator RebuildFilterCache(PrefabInfo parent, int currentHashSrc, string filterIn, string filterOut)
+        {
+            m_cachedEntriesBeingBuilt = true;
+            m_cachedEntriesHashSrc = currentHashSrc;
+            using var threadFilter = ThreadHelper.CreateThread(() => ExecuteFilter(parent, filterIn, filterOut), true);
+            yield return new WaitWhile(() => threadFilter.isAlive);
+            if (m_filterCooldown > 0)
+            {
+                yield break;
+            }
+            m_pagebar.SetNewLength(m_cachedEntries.Sum(x => x.Second.Length));
+            m_cachedEntriesBeingBuilt = false;
+        }
+
+        private void ExecuteFilter(PrefabInfo parent, string filterIn, string filterOut)
+        {
+            m_cachedEntries = new List<Tuple<DetourListParameterContainer, Tuple<PrefabChildEntryKey, SwitchInfo>[]>>();
+            foreach (var w in GetFilterLists())
+            {
+                List<KeyValuePair<PrefabChildEntryKey, SwitchInfo>> v1 = new List<KeyValuePair<PrefabChildEntryKey, SwitchInfo>>();
+                var counter = 0;
+                try
+                {
+                    foreach (var x in w.list)
+                    {
+                        if (w.itemAdditionalValidation(x)
+                        && (filterIn.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(filterIn, x.Key.ToString(parent)))
+                        && (filterOut.IsNullOrWhiteSpace() || (x.Value.SwitchItems?.Any(z => CheckIfPrefabMatchesFilter(filterOut, z.CachedProp?.GetUncheckedLocalizedTitle() ?? z.CachedTree?.GetUncheckedLocalizedTitle() ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER"))) ?? false)))
+                        {
+                            v1.Add(x);
+                        }
+                        if (m_filterCooldown > 0)
+                        {
+                            return;
+                        }
+                        counter++;
+
+                    }
+                    var v2 = v1?.Select(x => Tuple.New(x.Key, x.Value));
+                    var v3 = v2?.OrderBy(x => x.First.ToString(parent));
+                    var v4 = v3?.OrderBy(x => x.First.PrefabIdx < 0 ? 99999 : x.First.PrefabIdx);
+                    var v5 = v4?.ToArray();
+
+                    m_cachedEntries?.Add(Tuple.New(w, v5 ?? new Tuple<PrefabChildEntryKey, SwitchInfo>[0]));
+                }
+                catch (Exception e)
+                {
+                    if (m_filterCooldown > 0)
+                    {
+                        return;
+                    }
+                    throw new Exception("Unknown state @ K45PS Filter",e);
+                }
+                if (m_filterCooldown > 0)
+                {
+                    return;
+                }
             }
         }
+
+        private bool m_cachedEntriesBeingBuilt = false;
+
+        private void BuildTable()
+        {
+            var rowCount = m_pagebar.GetCurrentPageSize();
+            var rows = m_listItems.SetItemCount(rowCount);
+            var startItem = m_pagebar.GetCurrentPageStartIdx();
+            var counter = 0;
+            foreach (var entry in m_cachedEntries)
+            {
+                BuildItems(rows, entry.Second, counter - startItem, entry.First.differColor, entry.First.localList);
+                counter += entry.Second.Length;
+                if (counter > startItem + rowCount)
+                {
+                    break;
+                }
+            }
+
+            m_listContainer.isVisible = true;
+            m_listLoadingPlaceholder.isVisible = false;
+        }
+
+        public virtual int GetCurrentFilterCacheId() => (new string[] {
+                m_filterIn.text.Trim(),
+                m_filterOut.text.Trim()
+            }).Sum(x => x.GetHashCode());
 
         protected abstract List<DetourListParameterContainer> GetFilterLists();
 
@@ -318,7 +480,8 @@ namespace Klyte.PropSwitcher.UI
         }
         protected bool GetCurrentOutValue(out string value)
         {
-            var couldFind = PropSwitcherMod.Controller.PropsLoaded.TryGetValue(m_out.text, out TextSearchEntry outText) || PropSwitcherMod.Controller.TreesLoaded.TryGetValue(m_out.text, out outText);
+            TextSearchEntry outText = null;
+            var couldFind = (PropSwitcherMod.Controller.PropsLoaded?.TryGetValue(m_out.text, out outText) ?? false) || (PropSwitcherMod.Controller.TreesLoaded?.TryGetValue(m_out.text, out outText) ?? false);
             value = !m_out.text.IsNullOrWhiteSpace() && couldFind ? outText.prefabName : null;
             return m_out.text.IsNullOrWhiteSpace() || couldFind;
         }
@@ -328,17 +491,22 @@ namespace Klyte.PropSwitcher.UI
 
         #region General Utility
         protected static bool CheckIfPrefabMatchesFilter(string filter, string prefabName) => LocaleManager.cultureInfo.CompareInfo.IndexOf(prefabName ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER"), filter, CompareOptions.IgnoreCase) >= 0;
-        protected virtual bool IsProp(string v) => !v.IsNullOrWhiteSpace() && PropSwitcherMod.Controller.PropsLoaded.ContainsKey(v);
+        protected virtual bool IsProp(string v) => !v.IsNullOrWhiteSpace() && (PropSwitcherMod.Controller.PropsLoaded?.ContainsKey(v) ?? false);
         protected virtual PrefabChildEntryKey GetEntryFor(string v) =>
          new PrefabChildEntryKey(
-             PropSwitcherMod.Controller.PropsLoaded
-             .Union(PropSwitcherMod.Controller.TreesLoaded)
+             PropSwitcherMod.Controller.PropsLoaded?
+             .Union(PropSwitcherMod.Controller.TreesLoaded)?
              .Where(x => x.Key == v).FirstOrDefault().Value.prefabName
              );
-        protected void BuildItems(ref UIPanel[] rows, Tuple<PrefabChildEntryKey, SwitchInfo>[] keyList, int offset, bool isGlobal, Dictionary<PrefabChildEntryKey, SwitchInfo> localList = null)
+        protected void BuildItems(UIPanel[] rows, Tuple<PrefabChildEntryKey, SwitchInfo>[] keyList, int offset, bool isGlobal, Dictionary<PrefabChildEntryKey, SwitchInfo> localList = null)
         {
+            if (offset + keyList.Length < 0)
+            {
+                return;
+            }
+
             var parentPrefab = GetCurrentParentPrefabInfo();
-            for (int i = offset; i < offset + keyList.Length; i++)
+            for (int i = Math.Max(0, offset); i < offset + keyList.Length && i < rows.Length; i++)
             {
                 var currentData = keyList[i - offset];
                 var targetTextColor = isGlobal ? (localList?.Count(x => x.Key == currentData.First) ?? 0) == 0 ? Color.green : Color.red : Color.white;

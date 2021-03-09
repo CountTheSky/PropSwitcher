@@ -111,7 +111,7 @@ namespace Klyte.PropSwitcher.UI
         {
             m_selectedEntry = fromSourceSrc;
             var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
-            m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
+            m_out.text = PropSwitcherMod.Controller.PropsLoaded?.Union(PropSwitcherMod.Controller.TreesLoaded)?.Where(y => targetSwitch.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
             m_in.text = m_selectedEntry.ToString(GetCurrentParentPrefab());
             UpdateDetoursList(targetSwitch);
         }
@@ -181,11 +181,17 @@ namespace Klyte.PropSwitcher.UI
         #region Current Data Keys
         protected override XmlDictionary<PrefabChildEntryKey, SwitchInfo> GetCurrentRuleList(bool createIfNotExists = false)
         {
-            if (PSPropData.Instance.PrefabChildEntries.TryGetValue(m_prefab.text, out XmlDictionary<PrefabChildEntryKey, SwitchInfo> data) && data != null)
+            var parent = GetCurrentParentPrefab();
+            if (parent == null)
+            {
+                return null;
+            }
+
+            if (PSPropData.Instance.PrefabChildEntries.TryGetValue(parent.name, out XmlDictionary<PrefabChildEntryKey, SwitchInfo> data) && data != null)
             {
                 return data;
             }
-            if (createIfNotExists && GetCurrentParentPrefab() is T parent && parent != null)
+            if (createIfNotExists)
             {
                 PSPropData.Instance.PrefabChildEntries[parent.name] = new XmlDictionary<PrefabChildEntryKey, SwitchInfo>();
                 return PSPropData.Instance.PrefabChildEntries[parent.name];

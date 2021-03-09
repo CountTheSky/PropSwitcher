@@ -1,4 +1,5 @@
 ﻿using ColossalFramework.Globalization;
+using ColossalFramework.Threading;
 using ColossalFramework.UI;
 using Klyte.Commons;
 using Klyte.Commons.Interfaces;
@@ -49,56 +50,70 @@ namespace Klyte.PropSwitcher
         }
 
         private Dictionary<string, TextSearchEntry> m_propsLoaded;
+        private bool m_propsLoading = false;
         public Dictionary<string, TextSearchEntry> PropsLoaded
         {
             get
             {
                 if (m_propsLoaded == null)
                 {
-                    m_propsLoaded = GetInfos<PropInfo>().Where(x => x?.name != null)
-                    .Select(
-                        x => new TextSearchEntry()
-                        {
-                            prefabName = x.name,
-                            displayName = GetListName(x),
-                            terms = new List<string>()
-                            {
-                                x.name,
-                                GetListName(x),
-                                x.GetUncheckedLocalizedTitle(),
-                                PropIndexes.instance.AuthorList.TryGetValue(x.name.Split('.')[0], out string author) ? author : null
-                            }.Where(x => x != null).ToList()
-                        }
-                    )
-                    .ToDictionary(x => x.displayName, x => x);
+                    if (!m_propsLoading)
+                    {
+                        m_propsLoading = true;
+                        using var x = ThreadHelper.CreateThread(() =>
+                         m_propsLoaded = GetInfos<PropInfo>().Where(x => x?.name != null)
+                         .Select(
+                             x => new TextSearchEntry()
+                             {
+                                 prefabName = x.name,
+                                 displayName = GetListName(x),
+                                 terms = new List<string>()
+                                 {
+                                    x.name,
+                                    GetListName(x),
+                                    x.GetUncheckedLocalizedTitle(),
+                                    PropIndexes.instance.AuthorList.TryGetValue(x.name.Split('.')[0], out string author) ? author : null
+                                 }.Where(x => x != null).ToList()
+                             }
+                         )
+                         .GroupBy(x => x.displayName)
+                         .ToDictionary(x => x.Key, x => x.OrderBy(x => x.prefabName).First()), true);
+                    }
                 }
                 return m_propsLoaded;
             }
         }
 
         private Dictionary<string, TextSearchEntry> m_treesLoaded;
+        private bool m_treesLoading = false;
         public Dictionary<string, TextSearchEntry> TreesLoaded
         {
             get
             {
                 if (m_treesLoaded == null)
                 {
-                    m_treesLoaded = GetInfos<TreeInfo>().Where(x => x?.name != null)
-                    .Select(
-                        x => new TextSearchEntry()
-                        {
-                            prefabName = x.name,
-                            displayName = GetListName(x),
-                            terms = new List<string>()
-                            {
-                                x.name,
-                                GetListName(x),
-                                x.GetUncheckedLocalizedTitle(),
-                                TreeIndexes.instance.AuthorList.TryGetValue(x.name.Split('.')[0], out string author) ? author : null
-                            }.Where(x => x != null).ToList()
-                        }
-                    )
-                    .ToDictionary(x => x.displayName, x => x);
+                    if (!m_treesLoading)
+                    {
+                        m_treesLoading = true;
+                        using var x = ThreadHelper.CreateThread(() =>
+                            m_treesLoaded = GetInfos<TreeInfo>().Where(x => x?.name != null)
+                            .Select(
+                                x => new TextSearchEntry()
+                                {
+                                    prefabName = x.name,
+                                    displayName = GetListName(x),
+                                    terms = new List<string>()
+                                    {
+                                        x.name,
+                                        GetListName(x),
+                                        x.GetUncheckedLocalizedTitle(),
+                                        TreeIndexes.instance.AuthorList.TryGetValue(x.name.Split('.')[0], out string author) ? author : null
+                                    }.Where(x => x != null).ToList()
+                                }
+                            )
+                         .GroupBy(x => x.displayName)
+                         .ToDictionary(x => x.Key, x => x.OrderBy(x => x.prefabName).First()), true);
+                    }
                 }
                 return m_treesLoaded;
             }

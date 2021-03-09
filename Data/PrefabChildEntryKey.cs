@@ -87,7 +87,7 @@ namespace Klyte.PropSwitcher.Data
         {
             if (prefabIdx == -1)
             {
-                return PropSwitcherMod.Controller.TreesLoaded.Union(PropSwitcherMod.Controller.PropsLoaded).Where(x => x.Value.prefabName == SourcePrefab).FirstOrDefault().Value?.displayName ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
+                return PropSwitcherMod.Controller.TreesLoaded?.Union(PropSwitcherMod.Controller.PropsLoaded)?.Where(x => x.Value.prefabName == SourcePrefab).FirstOrDefault().Value?.displayName ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER");
             }
             if (parent is BuildingInfo bi && prefabIdx < bi.m_props.Length)
             {

@@ -40,9 +40,9 @@ namespace Klyte.PropSwitcher.UI
         {
             m_selectedEntry = fromSourceSrc;
             var fromSource = fromSourceSrc.SourcePrefab;
-            m_in.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => fromSource == y.Value.prefabName).FirstOrDefault().Key ?? fromSource ?? "";
+            m_in.text = PropSwitcherMod.Controller.PropsLoaded?.Union(PropSwitcherMod.Controller.TreesLoaded)?.Where(y => fromSource == y.Value.prefabName).FirstOrDefault().Key ?? fromSource ?? "";
             var targetSwitch = info.SwitchItems.Where(x => x.TargetPrefab == target).FirstOrDefault() ?? info.SwitchItems[0];
-            m_out.text = PropSwitcherMod.Controller.PropsLoaded.Union(PropSwitcherMod.Controller.TreesLoaded).Where(y => targetSwitch.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
+            m_out.text = PropSwitcherMod.Controller.PropsLoaded?.Union(PropSwitcherMod.Controller.TreesLoaded)?.Where(y => targetSwitch.TargetPrefab == y.Value.prefabName).FirstOrDefault().Key ?? targetSwitch.TargetPrefab ?? "";
             m_rotationOffset.text = targetSwitch.RotationOffset.ToString("F3");
             m_seedSource.isChecked = info.SeedSource == RandomizerSeedSource.INSTANCE;
             m_rotationOffset.parent.isVisible = IsProp(m_in.text);
