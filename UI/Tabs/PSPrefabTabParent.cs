@@ -117,12 +117,20 @@ namespace Klyte.PropSwitcher.UI
 
             this.m_rotationOffset = m_rotationOffset[0];
             Destroy(m_rotationOffset[1]);
-            m_addButton = uiHelper.AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), OnAddRule) as UIButton;
             this.m_rotationOffset.parent.isVisible = false;
+
+
+            KlyteMonoUtils.CreateUIElement(out UIPanel formSubmitButtons, layoutPanel.transform, "listPanel", new Vector4(0, 0, layoutPanel.width, 30));
+            formSubmitButtons.autoLayout = true;
+            m_addButton = new UIHelperExtension(formSubmitButtons).AddButton(Locale.Get("K45_PS_ADDREPLACEMENTRULE"), () => StartCoroutine(OnAddRule())) as UIButton;
+            m_addButton.forceZOrder = 0;
 
             m_in.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
             m_out.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
+
+            OnAfterCreateTopForm();
         }
+
 
         private void CreateList(UIPanel layoutPanel)
         {
@@ -176,6 +184,7 @@ namespace Klyte.PropSwitcher.UI
         protected abstract void AddActionButtons(UILabel reference);
         protected virtual void PreMainForm(UIHelperExtension uiHelper) { }
         protected virtual void DoExtraInputOptions(UIHelperExtension uiHelper) => AddCheckboxLocale("K45_PS_SAMESEEDFORBUILDINGNET", out m_seedSource, uiHelper, OnChangeSeedSource);
+        protected virtual void OnAfterCreateTopForm() { }
         protected void OnChangeSeedSource(bool newVal)
         {
             var currentEditingKey = GetCurrentEditingKey();
@@ -202,7 +211,12 @@ namespace Klyte.PropSwitcher.UI
                 .Select(x => x.Key)
                 .OrderBy((x) => x)
                 .ToArray() ?? new string[0];
-        protected virtual string OnChangeValueOut(string currentVal, int arg1, string[] arg2) => arg1 >= 0 && arg1 < arg2.Length ? arg2[arg1] : "";
+        protected virtual string OnChangeValueOut(string currentVal, int arg1, string[] arg2)
+        {
+            var result = arg1 >= 0 && arg1 < arg2.Length ? arg2[arg1] : "";
+            DoOnChangeValueOut(result);
+            return result;
+        }
 
         protected virtual string[] OnChangeFilterIn(string arg) =>
             PropSwitcherMod.Controller.PropsLoaded?
@@ -215,7 +229,7 @@ namespace Klyte.PropSwitcher.UI
         protected virtual string OnChangeValueIn(string sel, int arg1, string[] arg2)
         {
             m_out.text = "";
-            m_rotationOffset.text = "0";
+            m_rotationOffset.text = "0.000";
             if (arg1 >= 0 && arg1 < arg2.Length)
             {
                 DoOnChangeValueIn(arg2[arg1]);
@@ -230,7 +244,9 @@ namespace Klyte.PropSwitcher.UI
         }
 
         #endregion
-        protected virtual void OnAddRule()
+
+        protected virtual bool ShallAbortSaving() => false;
+        protected virtual IEnumerator OnAddRule()
         {
             var currentEditingKey = GetCurrentEditingKey();
             var currentList = GetCurrentRuleList(true);
@@ -244,7 +260,7 @@ namespace Klyte.PropSwitcher.UI
                     showButton1 = true,
                     textButton1 = Locale.Get("EXCEPTION_OK")
                 }, x => true);
-                return;
+                yield break;
             }
             if (!GetCurrentOutValue(out string targetValue))
             {
@@ -254,14 +270,13 @@ namespace Klyte.PropSwitcher.UI
                     showButton1 = true,
                     textButton1 = Locale.Get("EXCEPTION_OK")
                 }, x => true);
-                return;
+                yield break;
             }
-            StartCoroutine(AddRuleAsync(currentEditingKey, currentList, targetValue));
+            yield return AddRuleAsync(currentEditingKey, currentList, targetValue);
         }
 
         private IEnumerator AddRuleAsync(PrefabChildEntryKey currentEditingKey, XmlDictionary<PrefabChildEntryKey, SwitchInfo> currentList, string targetValue)
         {
-            yield return 0;
             if (!currentList.ContainsKey(currentEditingKey))
             {
                 currentList[currentEditingKey] = new Xml.SwitchInfo();
@@ -271,9 +286,17 @@ namespace Klyte.PropSwitcher.UI
                 var currentItem = currentList[currentEditingKey].Add(targetValue, float.TryParse(m_rotationOffset.text, out float offset) ? offset % 360 : 0);
                 WriteExtraSettings(currentList[currentEditingKey], currentItem);
                 m_cachedEntries = null;
+                if (ShallAbortSaving())
+                {
+                    return;
+                }
                 ThreadHelper.dispatcher.Dispatch(() => UpdateDetoursList(currentItem));
             }, true);
             yield return new WaitWhile(() => saveThread.isAlive);
+            if (ShallAbortSaving())
+            {
+                yield break;
+            }
             yield return UpdateAllRenderGroups();
         }
 
@@ -523,8 +546,13 @@ namespace Klyte.PropSwitcher.UI
         protected virtual void DoOnChangeValueIn(string v)
         {
             m_selectedEntry = GetEntryFor(v);
-            m_rotationOffset.parent.isVisible = IsProp(v);
+            m_rotationOffset.parent.isVisible = GetCurrentOutValue(out string val) && IsProp(v) && !val.IsNullOrWhiteSpace();
         }
+        protected virtual void DoOnChangeValueOut(string v)
+        {
+            m_rotationOffset.parent.isVisible = IsProp(m_in.text) && !v.IsNullOrWhiteSpace();
+        }
+
         internal abstract bool IsPropAvailable(KeyValuePair<string, TextSearchEntry> x);
         protected virtual void WriteExtraSettings(SwitchInfo switchInfo, Item currentItem) => switchInfo.SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
         #endregion

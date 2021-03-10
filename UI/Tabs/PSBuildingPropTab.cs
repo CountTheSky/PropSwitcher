@@ -87,6 +87,10 @@ namespace Klyte.PropSwitcher.UI
         protected override void DoExtraInputOptions(UIHelperExtension uiHelper)
         {
             AddVector3Field(Locale.Get("K45_PS_POSITIONOFFSETLABEL"), out m_positionOffset, uiHelper, (x) => { });
+
+            m_positionOffset[0].eventTextSubmitted += (x, y) => StartCoroutine(DoAutoSave());
+            m_positionOffset[1].eventTextSubmitted += (x, y) => StartCoroutine(DoAutoSave());
+            m_positionOffset[2].eventTextSubmitted += (x, y) => StartCoroutine(DoAutoSave());
             base.DoExtraInputOptions(uiHelper);
         }
 
@@ -129,7 +133,12 @@ namespace Klyte.PropSwitcher.UI
         protected override void DoOnChangeValueIn(string fromSource)
         {
             base.DoOnChangeValueIn(fromSource);
-            m_positionOffset[0].parent.isVisible = (m_selectedEntry?.PrefabIdx ?? -1) >= 0;
+            m_positionOffset[0].parent.isVisible = (m_selectedEntry?.PrefabIdx ?? -1) >= 0 && GetCurrentOutValue(out string val) && !val.IsNullOrWhiteSpace();
+        }
+        protected override void DoOnChangeValueOut(string fromSource)
+        {
+            base.DoOnChangeValueOut(fromSource);
+            m_positionOffset[0].parent.isVisible = (m_selectedEntry?.PrefabIdx ?? -1) >= 0 && !fromSource.IsNullOrWhiteSpace();
         }
     }
 }

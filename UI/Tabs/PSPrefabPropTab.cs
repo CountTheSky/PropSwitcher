@@ -8,6 +8,7 @@ using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Libraries;
 using Klyte.PropSwitcher.Xml;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -42,10 +43,23 @@ namespace Klyte.PropSwitcher.UI
             base.PreMainForm(uiHelper);
             AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterParent, OnChangeParentPrefab, 100);
             m_prefab.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
-            AddButtonInEditorRow(m_prefab, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Dropper, EnablePickTool, Locale.Get("K45_PS_ENABLETOOLPICKER"), true, 30).zOrder = m_prefab.zOrder + 1;
+            AddButtonInEditorRow(m_prefab, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Dropper, EnablePickTool, "K45_PS_ENABLETOOLPICKER", true, 30).zOrder = m_prefab.zOrder + 1;
             m_prefab.eventLostFocus += (x, y) => UpdateDetoursList();
         }
-        protected override void OnAddRule()
+
+        protected override void OnAfterCreateTopForm()
+        {
+            base.OnAfterCreateTopForm();
+            m_autoSaveButton = AddButtonInEditorRow(m_addButton, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Save, ToggleAutoSave, "K45_PS_AUTOSAVE_DESCRIPTION", false, (int)m_addButton.height);
+            KlyteMonoUtils.InitButtonSameSprite(m_autoSaveButton, "OptionBase");
+            m_autoSaveButton.hoveredColor = Color.white;
+            m_autoSaveButton.color = m_autoSaveEnabled ? Color.green : new Color(.2f, .2f, .2f, 1);
+            m_autoSaveButton.canFocus = false;
+
+            m_rotationOffset.eventTextSubmitted += (x, y) => StartCoroutine(DoAutoSave());
+        }
+
+        protected override IEnumerator OnAddRule()
         {
             if ((GetCurrentParentPrefab()?.name).IsNullOrWhiteSpace())
             {
@@ -55,9 +69,9 @@ namespace Klyte.PropSwitcher.UI
                     showButton1 = true,
                     textButton1 = Locale.Get("EXCEPTION_OK")
                 }, x => true);
-                return;
+                yield break;
             }
-            base.OnAddRule();
+            yield return base.OnAddRule();
         }
         protected override void DoWithFilterRow(float targetWidth, UIPanel panel, out UITextField filterIn, out UITextField fillterOut)
         {
@@ -82,6 +96,8 @@ namespace Klyte.PropSwitcher.UI
             m_btnExport.isVisible = isEditable;
             m_titleRow.isVisible = isEditable;
             m_filterRow.isVisible = isEditable;
+            m_pagebar.component.isVisible = isEditable;
+            m_autoSaveButton.isVisible = isEditable;
             DoOnUpdateDetoursList(isEditable, targetItem);
 
 
@@ -200,7 +216,7 @@ namespace Klyte.PropSwitcher.UI
             return null;
         }
 
-        protected override string GetCurrentInValue() => m_selectedEntry.FromContext(GetCurrentParentPrefab());
+        protected override string GetCurrentInValue() => m_selectedEntry?.FromContext(GetCurrentParentPrefab());
         protected abstract T GetCurrentParentPrefab();
         public override PrefabInfo GetCurrentParentPrefabInfo() => GetCurrentParentPrefab();
 
@@ -245,16 +261,64 @@ namespace Klyte.PropSwitcher.UI
         protected virtual void DoOnUpdateDetoursList(bool isEditable, Item targetItem)
         {
             m_seedSource.isVisible = isEditable;
-            m_rotationOffset.text = (targetItem?.RotationOffset ?? 0).ToString("0.##");
+            m_rotationOffset.text = (targetItem?.RotationOffset ?? 0).ToString("0.000");
         }
         protected virtual void SetCurrentLoadedExtraData(string fromSource, SwitchInfo info, Item item)
         {
             m_seedSource.isChecked = info.SeedSource == RandomizerSeedSource.INSTANCE;
-            m_rotationOffset.text = item.RotationOffset.ToString("0.#");
+            m_rotationOffset.text = item.RotationOffset.ToString("0.000");
             m_rotationOffset.parent.isVisible = IsProp(fromSource);
         }
         #endregion
 
+        #region AutoSave
+        private bool m_autoSaveEnabled = true;
+        private bool m_autoSavingNow = false;
+        private int m_autoSaveCooldown = 0;
+        private UIButton m_autoSaveButton;
+
+        private void ToggleAutoSave()
+        {
+            m_autoSaveEnabled = !m_autoSaveEnabled;
+            m_autoSaveButton.color = m_autoSaveEnabled ? new Color(.2f, 1, .2f, 1) : new Color(.2f, .2f, .2f, 1);
+            m_autoSaveButton.hoveredColor = m_autoSaveEnabled ? new Color(.4f, 1, .4f, 1) : new Color(.4f, .4f, .4f, 1);
+            m_autoSaveButton.Unfocus();
+            m_autoSavingNow = false;
+        }
+
+        protected IEnumerator DoAutoSave()
+        {
+            if (m_autoSaveEnabled && !(GetCurrentEditingKey() is null))
+            {
+                m_autoSaveCooldown = 8;
+                if (m_autoSavingNow)
+                {
+                    yield break;
+                }
+                try
+                {
+                    m_autoSavingNow = true;
+                resetLbl: while (m_autoSaveCooldown > 0)
+                    {
+                        m_autoSaveCooldown--;
+                        yield return 0;
+                    }
+                    yield return OnAddRule();
+                    if (ShallAbortSaving())
+                    {
+                        goto resetLbl;
+                    }
+                }
+                finally
+                {
+                    m_autoSavingNow = false;
+                }
+            }
+        }
+
+        protected override bool ShallAbortSaving() => m_autoSaveCooldown > 0 && m_autoSaveEnabled;
+
+        #endregion
         private enum SourceFilterOptions
         {
             ALL,
