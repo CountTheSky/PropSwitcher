@@ -17,7 +17,7 @@ namespace Klyte.PropSwitcher.UI
 {
     public class PSBuildingPropTab : PSPrefabPropTab<BuildingInfo>
     {
-        public PSBuildingPropTab Instance { get; private set; }
+        public static PSBuildingPropTab Instance { get; private set; }
         protected UITextField[] m_positionOffset;
 
         public void Start() => Instance = this;
@@ -122,13 +122,13 @@ namespace Klyte.PropSwitcher.UI
         protected override void SetCurrentLoadedExtraData(string fromSource, SwitchInfo info, Item item)
         {
             base.SetCurrentLoadedExtraData(fromSource, info, item);
-            m_positionOffset[0].parent.isVisible = IsProp(fromSource) && (m_selectedEntry?.PrefabIdx ?? -1) >= 0;
+            m_positionOffset[0].parent.isVisible = (m_selectedEntry?.PrefabIdx ?? -1) >= 0;
         }
 
         protected override void DoOnChangeValueIn(string fromSource)
         {
             base.DoOnChangeValueIn(fromSource);
-            m_positionOffset[0].parent.isVisible = IsProp(fromSource) && (m_selectedEntry?.PrefabIdx ?? -1) >= 0;
+            m_positionOffset[0].parent.isVisible = (m_selectedEntry?.PrefabIdx ?? -1) >= 0;
         }
     }
 }

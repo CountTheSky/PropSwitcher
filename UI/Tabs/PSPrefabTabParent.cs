@@ -203,6 +203,7 @@ namespace Klyte.PropSwitcher.UI
                 .OrderBy((x) => x)
                 .ToArray() ?? new string[0];
         protected virtual string OnChangeValueOut(string currentVal, int arg1, string[] arg2) => arg1 >= 0 && arg1 < arg2.Length ? arg2[arg1] : "";
+
         protected virtual string[] OnChangeFilterIn(string arg) =>
             PropSwitcherMod.Controller.PropsLoaded?
             .Union(PropSwitcherMod.Controller.TreesLoaded)?
@@ -223,6 +224,7 @@ namespace Klyte.PropSwitcher.UI
             else
             {
                 m_rotationOffset.parent.isVisible = false;
+                m_selectedEntry = null;
                 return "";
             }
         }
@@ -392,24 +394,26 @@ namespace Klyte.PropSwitcher.UI
             foreach (var w in GetFilterLists())
             {
                 List<KeyValuePair<PrefabChildEntryKey, SwitchInfo>> v1 = new List<KeyValuePair<PrefabChildEntryKey, SwitchInfo>>();
-                var counter = 0;
                 try
                 {
-                    foreach (var x in w.list)
+                    if (w?.list != null)
                     {
-                        if (w.itemAdditionalValidation(x)
-                        && (filterIn.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(filterIn, x.Key.ToString(parent)))
-                        && (filterOut.IsNullOrWhiteSpace() || (x.Value.SwitchItems?.Any(z => CheckIfPrefabMatchesFilter(filterOut, z.CachedProp?.GetUncheckedLocalizedTitle() ?? z.CachedTree?.GetUncheckedLocalizedTitle() ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER"))) ?? false)))
+                        foreach (var x in w.list)
                         {
-                            v1.Add(x);
-                        }
-                        if (m_filterCooldown > 0)
-                        {
-                            return;
-                        }
-                        counter++;
+                            if (w.itemAdditionalValidation(x)
+                            && (filterIn.IsNullOrWhiteSpace() || CheckIfPrefabMatchesFilter(filterIn, x.Key.ToString(parent)))
+                            && (filterOut.IsNullOrWhiteSpace() || (x.Value.SwitchItems?.Any(z => CheckIfPrefabMatchesFilter(filterOut, z.CachedProp?.GetUncheckedLocalizedTitle() ?? z.CachedTree?.GetUncheckedLocalizedTitle() ?? Locale.Get("K45_PS_REMOVEPROPPLACEHOLDER"))) ?? false)))
+                            {
+                                v1.Add(x);
+                            }
+                            if (m_filterCooldown > 0)
+                            {
+                                return;
+                            }
 
+                        }
                     }
+
                     var v2 = v1?.Select(x => Tuple.New(x.Key, x.Value));
                     var v3 = v2?.OrderBy(x => x.First.ToString(parent));
                     var v4 = v3?.OrderBy(x => x.First.PrefabIdx < 0 ? 99999 : x.First.PrefabIdx);
@@ -423,7 +427,7 @@ namespace Klyte.PropSwitcher.UI
                     {
                         return;
                     }
-                    throw new Exception("Unknown state @ K45PS Filter",e);
+                    throw new Exception("Unknown state @ K45PS Filter", e);
                 }
                 if (m_filterCooldown > 0)
                 {
@@ -468,7 +472,7 @@ namespace Klyte.PropSwitcher.UI
 
         #region Current Data Keys
         protected abstract XmlDictionary<PrefabChildEntryKey, SwitchInfo> GetCurrentRuleList(bool createIfNotExists = false);
-        protected virtual PrefabInfo GetCurrentParentPrefabInfo() => null;
+        public virtual PrefabInfo GetCurrentParentPrefabInfo() => null;
         protected Item GetCurrentEditingItem()
         {
             SwitchInfo info = null;
@@ -486,7 +490,7 @@ namespace Klyte.PropSwitcher.UI
             return m_out.text.IsNullOrWhiteSpace() || couldFind;
         }
         protected abstract string GetCurrentInValue();
-        protected virtual PrefabChildEntryKey GetCurrentEditingKey() => m_selectedEntry;
+        public virtual PrefabChildEntryKey GetCurrentEditingKey() => m_selectedEntry;
         #endregion
 
         #region General Utility

@@ -201,7 +201,15 @@ namespace Klyte.PropSwitcher.UI
 
         protected override string GetCurrentInValue() => m_selectedEntry.FromContext(GetCurrentParentPrefab());
         protected abstract T GetCurrentParentPrefab();
-        protected override PrefabInfo GetCurrentParentPrefabInfo() => GetCurrentParentPrefab();
+        public override PrefabInfo GetCurrentParentPrefabInfo() => GetCurrentParentPrefab();
+
+        public override int GetCurrentFilterCacheId() => (new string[] {
+                m_filterSource.selectedIndex.ToString(),
+                GetCurrentParentPrefab()?.name??"",
+                m_filterIn.text.Trim(),
+                m_filterOut.text.Trim()
+            }).Sum(x => x.GetHashCode());
+
         #endregion
 
         #region New prefab selectors callbacks

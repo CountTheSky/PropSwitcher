@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
 using static Klyte.PropSwitcher.Xml.SwitchInfo;
+using static RenderManager;
 
 namespace Klyte.PropSwitcher.Overrides
 {
@@ -78,76 +79,68 @@ namespace Klyte.PropSwitcher.Overrides
         }
         #endregion
         #region BuildingAI
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, false, new CodeInstruction(OpCodes.Ldnull), new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldloc_S, 7));
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, false, new CodeInstruction(OpCodes.Ldnull), new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldloc_S, 16));
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_RenderProps(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, true, new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldarg_2), new CodeInstruction(OpCodes.Ldloc_S, 11));
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_Xxxxxx(IEnumerable<CodeInstruction> instr, ILGenerator il, bool isRender, CodeInstruction ldCamInfo, CodeInstruction ldArgBuildingId, CodeInstruction ldLocPropId)
         {
             var instrList = new List<CodeInstruction>(instr);
-
-            for (int i = 2; i < instrList.Count; i++)
-            {
-                if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalTree")
-                {
-                    instrList.InsertRange(i + 1, new List<CodeInstruction>
-                    {
-                        new CodeInstruction(OpCodes.Ldarg_1 ),
-                        new CodeInstruction(OpCodes.Ldloc_S,7),
-                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") ),
-
-                    });
-                    i += 8;
-                }
-
-            }
-
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
-        {
-            var instrList = new List<CodeInstruction>(instr);
-
-            for (int i = 2; i < instrList.Count; i++)
-            {
-                if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalTree")
-                {
-                    instrList.InsertRange(i + 1, new List<CodeInstruction>
-                    {
-                        new CodeInstruction(OpCodes.Ldarg_1 ),
-                        new CodeInstruction(OpCodes.Ldloc_S,16),
-                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") ),
-
-                    });
-                    i += 8;
-                }
-
-            }
-
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_RenderProps(IEnumerable<CodeInstruction> instr, ILGenerator il)
-        {
-            var instrList = new List<CodeInstruction>(instr);
-            for (int i = 0; i < instrList.Count; i++)
+            var posOffsetVar = il.DeclareLocal(typeof(Vector3));
+            for (int i = 3; i < instrList.Count; i++)
             {
                 if (instrList[i].operand == typeof(BuildingInfo.Prop).GetField("m_finalTree", RedirectorUtils.allFlags))
                 {
                     instrList.InsertRange(i + 1, new List<CodeInstruction>
                     {
-                        new CodeInstruction(OpCodes.Ldarg_2 ),
-                        new CodeInstruction(OpCodes.Ldloc_S,11),
+                        ldCamInfo,
+                        ldArgBuildingId,
+                        ldLocPropId,
+                        new CodeInstruction(OpCodes.Ldloca_S,posOffsetVar),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") ),
 
                     }); ;
                     i += 8;
                 }
-
+                if (instrList[i - 1].opcode == OpCodes.Ldfld && instrList[i - 1].operand is FieldInfo fi3 && fi3.Name == "m_position" && fi3.DeclaringType == typeof(BuildingInfo.Prop))
+                {
+                    instrList.InsertRange(i, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldloc_S,posOffsetVar),
+                        new CodeInstruction(OpCodes.Call, typeof(Vector3).GetMethod("op_Addition")),
+                        });
+                    i += 3;
+                }
+                if (isRender)
+                {
+                    if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb && lb.LocalIndex == 11
+                    && instrList[i + 1].opcode == OpCodes.Ldc_I4_1
+                    && instrList[i + 2].opcode == OpCodes.Add)
+                    {
+                        var lbl1 = il.DefineLabel();
+                        var startCmd = new CodeInstruction(OpCodes.Ldloca_S, 29)
+                        {
+                            labels = instrList[i].labels
+                        };
+                        instrList[i].labels = new List<Label> { lbl1 };
+                        instrList.InsertRange(i, new CodeInstruction[] {
+                        startCmd,
+                        new CodeInstruction(OpCodes.Brfalse, lbl1),
+                        new CodeInstruction(OpCodes.Ldloc_S, 29),
+                        new CodeInstruction(OpCodes.Ldarg_0),
+                        new CodeInstruction(OpCodes.Ldloc_S,12),
+                        new CodeInstruction(OpCodes.Ldloc_S,11),
+                        new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("BuildingAI_CheckDrawCircle",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Br, lbl1),
+                    });
+                        i += 8;
+                    }
+                }
             }
             LogUtils.PrintMethodIL(instrList);
 
             return instrList;
         }
+
+        public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalTree, j, location);
         #endregion
         #region NetLane
 
@@ -225,11 +218,15 @@ namespace Klyte.PropSwitcher.Overrides
         public static TreeInfo GetTargetInfoWithoutId(TreeInfo info) => GetTargetInfo_internal(info);
         public static TreeInfo GetTargetInfoWithPosition(TreeInfo info, Vector3 position) => GetTargetInfo_internal(info, position);
         public static TreeInfo GetTargetInfoFromNetLane(TreeInfo info, uint laneId, int itemId, int iteration) => GetTargetInfo_internal(info, new Vector3(laneId, itemId, iteration), new InstanceID { NetLane = laneId }, itemId);
-        public static TreeInfo GetTargetInfoFromBuilding(TreeInfo info, ushort buildingId, int itemId) => GetTargetInfo_internal(info, new Vector3(buildingId, itemId), new InstanceID { Building = buildingId }, itemId);
-        private static TreeInfo GetTargetInfo_internal(TreeInfo info, Vector3 position = default, InstanceID id = default, int propIdx = -1)
+        public static TreeInfo GetTargetInfoFromBuilding(TreeInfo info, CameraInfo camInfo, ushort buildingId, int itemId, out Vector3 positionOffset) => GetTargetInfo_internal(info, out positionOffset, new Vector3(buildingId, itemId), new InstanceID { Building = buildingId }, itemId);
+        private static TreeInfo GetTargetInfo_internal(TreeInfo info, Vector3 position = default, InstanceID id = default, int propIdx = -1) => GetTargetInfo_internal(info, out _, position, id, propIdx);
+        private static TreeInfo GetTargetInfo_internal(TreeInfo info, out Vector3 positionOffset, Vector3 position = default, InstanceID id = default, int propIdx = -1)
         {
             float angle = 0;
-            return PSOverrideCommons.GetTargetInfo_internal(info, ref id, ref angle, ref position, propIdx, out Item result) ? result?.CachedTree : info;
+            positionOffset = default;
+            return info is null
+                ? null
+                : PSOverrideCommons.GetTargetInfo_internal(info, ref id, ref positionOffset, ref angle, ref position, propIdx, out Item result) ? result?.CachedTree : info;
         }
     }
 }

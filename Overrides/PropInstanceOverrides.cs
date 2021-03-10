@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
 using static Klyte.PropSwitcher.Xml.SwitchInfo;
+using static RenderManager;
 
 namespace Klyte.PropSwitcher.Overrides
 {
@@ -23,16 +24,16 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(PropInstance).GetMethod("CheckOverlap", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
             AddRedirect(typeof(PropInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
 
-
             AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_CalculatePropGroupData"));//7
             AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_PopulatePropGroupData"));//16
             AddRedirect(typeof(BuildingAI).GetMethod("RenderProps", RedirectorUtils.allFlags & ~BindingFlags.Public), null, null, GetType().GetMethod("TranspileBuildingAI_RenderProps"));
+            AddRedirect(typeof(BuildingManager).GetMethod("EndOverlay"), null, GetType().GetMethod("AfterEndRenderOverlayBuilding"));
             AddRedirect(typeof(NetLane).GetMethod("CalculateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_CalculateGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_PopulateGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("RenderInstance", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_RenderInstance"));
         }
 
-
+        public static void AfterEndRenderOverlayBuilding(CameraInfo cameraInfo) => PSOverrideCommons.OnRenderOverlay(cameraInfo);
 
         #region BuildingAI
         public static IEnumerable<CodeInstruction> TranspileBuildingAI_CalculatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(7, instr, il);
@@ -41,6 +42,7 @@ namespace Klyte.PropSwitcher.Overrides
         {
             var instrList = new List<CodeInstruction>(instr);
             var angleVar = il.DeclareLocal(typeof(float));
+            var posVar = il.DeclareLocal(typeof(Vector3));
 
             for (int i = 2; i < instrList.Count; i++)
             {
@@ -51,8 +53,9 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Ldarg_1),
                         new CodeInstruction(OpCodes.Ldloca_S,angleVar),
+                        new CodeInstruction(OpCodes.Ldloca_S,posVar),
                         new CodeInstruction(OpCodes.Ldloc_S, jVarIdx),
-                        new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculatePropGroupData",RedirectorUtils.allFlags)),
+                        new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculateTargetProp",RedirectorUtils.allFlags)),
                         });
                     i += 6;
                 }
@@ -62,6 +65,14 @@ namespace Klyte.PropSwitcher.Overrides
                     instrList.InsertRange(i, new List<CodeInstruction>{
                         new CodeInstruction(OpCodes.Ldloc_S,angleVar),
                         new CodeInstruction(OpCodes.Add),
+                        });
+                    i += 3;
+                }
+                if (instrList[i - 1].opcode == OpCodes.Ldfld && instrList[i - 1].operand is FieldInfo fi3 && fi3.Name == "m_position" && fi3.DeclaringType == typeof(BuildingInfo.Prop))
+                {
+                    instrList.InsertRange(i, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldloc_S,posVar),
+                        new CodeInstruction(OpCodes.Call, typeof(Vector3).GetMethod("op_Addition")),
                         });
                     i += 3;
                 }
@@ -76,7 +87,8 @@ namespace Klyte.PropSwitcher.Overrides
         {
             var instrList = new List<CodeInstruction>(instr);
             var angleVar = il.DeclareLocal(typeof(float));
-            for (int i = 2; i < instrList.Count; i++)
+            var posOffsetVar = il.DeclareLocal(typeof(Vector3));
+            for (int i = 2; i < instrList.Count - 2; i++)
             {
                 if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalProp")
                 {
@@ -85,8 +97,9 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Ldarg_2),
                         new CodeInstruction(OpCodes.Ldloca_S,angleVar),
+                        new CodeInstruction(OpCodes.Ldloca_S,posOffsetVar),
                         new CodeInstruction(OpCodes.Ldloc_S,11),
-                        new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculatePropGroupData",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculateTargetProp",RedirectorUtils.allFlags)),
                         });
                     i += 6;
                 }
@@ -99,31 +112,56 @@ namespace Klyte.PropSwitcher.Overrides
                         });
                     i += 3;
                 }
+                if (instrList[i - 1].opcode == OpCodes.Ldfld && instrList[i - 1].operand is FieldInfo fi3 && fi3.Name == "m_position" && fi3.DeclaringType == typeof(BuildingInfo.Prop))
+                {
+                    instrList.InsertRange(i, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldloc_S,posOffsetVar),
+                        new CodeInstruction(OpCodes.Call, typeof(Vector3).GetMethod("op_Addition")),
+                        });
+                    i += 3;
+                }
+                if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb && lb.LocalIndex == 11
+                    && instrList[i + 1].opcode == OpCodes.Ldc_I4_1
+                    && instrList[i + 2].opcode == OpCodes.Add)
+                {
+                    var lbl1 = il.DefineLabel();
+                    var startCmd = new CodeInstruction(OpCodes.Ldloca_S, 18)
+                    {
+                        labels = instrList[i].labels
+                    };
+                    instrList[i].labels = new List<Label> { lbl1 };
+                    instrList.InsertRange(i, new CodeInstruction[] {
+                        startCmd,
+                        new CodeInstruction(OpCodes.Brfalse, lbl1),
+                        new CodeInstruction(OpCodes.Ldloc_S, 18),
+                        new CodeInstruction(OpCodes.Ldarg_0),
+                        new CodeInstruction(OpCodes.Ldloc_S,12),
+                        new CodeInstruction(OpCodes.Ldloc_S,11),
+                        new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CheckDrawCircle",RedirectorUtils.allFlags)),
+                        new CodeInstruction(OpCodes.Br, lbl1),
+                    });
+                    i += 8;
+                }
             }
-
-
             LogUtils.PrintMethodIL(instrList);
 
             return instrList;
         }
 
-        public static PropInfo BuildingAI_CalculatePropGroupData(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle, ushort j)
+        public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalProp, j, location);
+
+        public static PropInfo BuildingAI_CalculateTargetProp(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle, out Vector3 positionOffset, ushort j)
         {
             angle = 0;
+            positionOffset = default;
             var finalProp = prop.m_finalProp;
             if (finalProp == null)
             {
                 return null;
             }
-
-            ref Building buildingData = ref BuildingManager.instance.m_buildings.m_buffer[buildingID];
-            Matrix4x4 matrix4x2 = default;
-            matrix4x2.SetTRS(Building.CalculateMeshPosition(buildingAI.m_info, buildingData.m_position, buildingData.m_angle, buildingData.Length), Quaternion.AngleAxis(buildingData.m_angle * 57.29578f, Vector3.down), Vector3.one);
-            Vector3 vector2 = matrix4x2.MultiplyPoint(prop.m_position);
-
+            Vector3 vector2 = new Vector3(buildingID, 0, j);
             var id = new InstanceID { Building = buildingID };
-            var result = GetTargetInfo(finalProp, ref id, ref angle, ref vector2, j);
-
+            var result = GetTargetInfo(finalProp, ref id, ref positionOffset, ref angle, ref vector2, j);
             return result;
         }
 
@@ -257,6 +295,7 @@ namespace Klyte.PropSwitcher.Overrides
         public static PropInfo NetLane_CalculateGroupData(PropInfo finalInfo, int j, uint laneId, out float angleOffset)//, int layer, string source)
         {
             angleOffset = 0;
+            Vector3 offsetToAdd = default;
             if (finalInfo == null)
             {
                 return null;
@@ -267,7 +306,7 @@ namespace Klyte.PropSwitcher.Overrides
             var id = new InstanceID { NetSegment = thiz.m_segment };
             var vector3 = thiz.m_bezier.Position(1f / j);
             vector3.x += j;
-            var result = GetTargetInfo(finalInfo, ref id, ref angleOffset, ref vector3);
+            var result = GetTargetInfo(finalInfo, ref id, ref offsetToAdd, ref angleOffset, ref vector3);
             //if (result != finalInfo)
             //{
             //    LogUtils.DoWarnLog($"s={thiz.m_segment}; l= {laneId}; j = {j}; vector = {vector}; src = {source}; layer = {layer};  finalInfo = {finalInfo} == prop = {result}; layers = {result.m_prefabDataLayer} | {result.m_effectLayer}");
@@ -283,7 +322,8 @@ namespace Klyte.PropSwitcher.Overrides
         public static PropInfo GetTargetInfoGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle)
         {
             var id = new InstanceID { Prop = propID };
-            return GetTargetInfo(info, ref id, ref angle, ref position);
+            var offsetToAdd = default(Vector3);
+            return GetTargetInfo(info, ref id, ref offsetToAdd, ref angle, ref position);
         }
 
         public static IEnumerable<CodeInstruction> DetourPropInstanceObjMethods(IEnumerable<CodeInstruction> instr, ILGenerator il)
@@ -392,11 +432,12 @@ namespace Klyte.PropSwitcher.Overrides
         {
             InstanceID id = default;
             float angle = 0;
-            return GetTargetInfo_internal(info, ref id, ref angle, ref vector3, -1);
+            Vector3 offsetToAdd = default;
+            return GetTargetInfo_internal(info, ref id, ref offsetToAdd, ref angle, ref vector3, -1);
         }
 
-        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx = -1) => GetTargetInfo_internal(info, ref id, ref angle, ref position, propIdx);
+        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 position, int propIdx = -1) => GetTargetInfo_internal(info, ref id, ref offsetToAdd, ref angle, ref position, propIdx);
 
-        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx) => PSOverrideCommons.GetTargetInfo_internal(info, ref id, ref angle, ref position, propIdx, out Item result) ? result?.CachedProp : info;
+        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 position, int propIdx) => PSOverrideCommons.GetTargetInfo_internal(info, ref id, ref offsetToAdd, ref angle, ref position, propIdx, out Item result) ? result?.CachedProp : info;
     }
 }

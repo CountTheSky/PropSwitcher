@@ -1,15 +1,21 @@
-﻿using ColossalFramework.Math;
+﻿using ColossalFramework;
+using ColossalFramework.Math;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
+using Klyte.PropSwitcher.UI;
 using Klyte.PropSwitcher.Xml;
+using System.Collections.Generic;
 using UnityEngine;
 using static Klyte.PropSwitcher.Xml.SwitchInfo;
+using static RenderManager;
 
 namespace Klyte.PropSwitcher.Overrides
 {
     internal class PSOverrideCommons
     {
-        public static bool GetTargetInfo_internal(PrefabInfo info, ref InstanceID id, ref float angle, ref Vector3 position, int propIdx, out Item result)
+        private static readonly HashSet<Vector4> renderOverlayCirclePositions = new HashSet<Vector4>();
+
+        public static bool GetTargetInfo_internal(PrefabInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 randomizerParameters, int propIdx, out Item result)
         {
             if (info == null || PSPropData.Instance?.Entries == null)
             {
@@ -48,7 +54,7 @@ namespace Klyte.PropSwitcher.Overrides
                 {
                     if (propIdx >= 0 && ((switchInfoDict?.TryGetValue(indexKey, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(indexKey, out switchInfo) ?? false)))
                     {
-                        if (TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position))
+                        if (TryApplyInfo(ref id, ref offsetToAdd, ref angle, switchInfo, ref infoItem, ref randomizerParameters))
                         {
                             result = infoItem;
                             return true;
@@ -56,7 +62,7 @@ namespace Klyte.PropSwitcher.Overrides
                     }
                     if ((switchInfoDict?.TryGetValue(defaultKey, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(defaultKey, out switchInfo) ?? false))
                     {
-                        if (TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position))
+                        if (TryApplyInfo(ref id, ref offsetToAdd, ref angle, switchInfo, ref infoItem, ref randomizerParameters))
                         {
                             result = infoItem;
                             return true;
@@ -67,7 +73,7 @@ namespace Klyte.PropSwitcher.Overrides
             if (PSPropData.Instance.Entries.ContainsKey(defaultKey))
             {
                 switchInfo = PSPropData.Instance.Entries[defaultKey];
-                if (TryApplyInfo(ref id, ref angle, switchInfo, ref infoItem, ref position))
+                if (TryApplyInfo(ref id, ref offsetToAdd, ref angle, switchInfo, ref infoItem, ref randomizerParameters))
                 {
                     result = infoItem;
                     return true;
@@ -78,7 +84,7 @@ namespace Klyte.PropSwitcher.Overrides
 
         }
 
-        private static bool TryApplyInfo(ref InstanceID id, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 position)
+        private static bool TryApplyInfo(ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 randomizerParameters)
         {
             if (switchInfo.SwitchItems.Length > 0)
             {
@@ -88,7 +94,7 @@ namespace Klyte.PropSwitcher.Overrides
                 }
                 else
                 {
-                    var positionSeed = (Mathf.RoundToInt(position.x) >> 2) * (Mathf.RoundToInt(position.z) >> 2);
+                    var positionSeed = (Mathf.RoundToInt(randomizerParameters.x) >> 2) * (Mathf.RoundToInt(randomizerParameters.z) >> 2);
                     var seed = switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION || id == default || id.Prop != 0 ? positionSeed : (int)id.Index;
                     var r = new Randomizer(seed);
                     var targetIdx = r.Int32((uint)switchInfo.SwitchItems.Length);
@@ -99,9 +105,50 @@ namespace Klyte.PropSwitcher.Overrides
                 }
 
                 angle += infoItem.RotationOffset * Mathf.Deg2Rad;
+                offsetToAdd += infoItem.PositionOffset;
                 return true;
             }
             return false;
+        }
+
+        public static void CheckIfShallCircle(string parentName, PrefabInfo info, int propIdx, Vector3 position)
+        {
+            if (PSBuildingPropTab.Instance?.component?.isVisible is true && !(info is null))
+            {
+                if (parentName == PSBuildingPropTab.Instance.GetCurrentParentPrefabInfo()?.name)
+                {
+
+                    var currentKey = PSBuildingPropTab.Instance?.GetCurrentEditingKey();
+                    if (!(currentKey is null) && (currentKey.SourcePrefab == info.name || currentKey.PrefabIdx == propIdx))
+                    {
+                        var magnitude = 0f;
+                        if (info is TreeInfo tf)
+                        {
+                            magnitude = Mathf.Max(tf.m_mesh.bounds.size.x, tf.m_mesh.bounds.size.z, 1);
+                        }
+                        if (info is PropInfo pf)
+                        {
+                            magnitude = Mathf.Max(pf.m_mesh.bounds.size.x, pf.m_mesh.bounds.size.z, 1);
+                        }
+                        renderOverlayCirclePositions.Add(new Vector4(position.x, position.y, position.z, magnitude));
+
+                    }
+                }
+            }
+        }
+
+        public static readonly Color orange = new Color(1, .5f, 0, 1);
+
+        public static void OnRenderOverlay(CameraInfo camInfo)
+        {
+            var circleSize = Mathf.Lerp(0, 3f, SimulationManager.instance.m_realTimer % 0.8f / 0.8f);
+            foreach (var position in renderOverlayCirclePositions)
+            {
+                var orangeHalf = new Color(1, .5f, 0, (3 - circleSize) * .25f);
+                Singleton<RenderManager>.instance.OverlayEffect.DrawCircle(camInfo, orange, position, position.w, -1f, 1280f, false, true);
+                Singleton<RenderManager>.instance.OverlayEffect.DrawCircle(camInfo, orangeHalf, position, position.w + circleSize, -1f, 1280f, false, true);
+            }
+            renderOverlayCirclePositions.Clear();
         }
     }
 }
