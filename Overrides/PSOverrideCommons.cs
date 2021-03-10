@@ -94,7 +94,7 @@ namespace Klyte.PropSwitcher.Overrides
                 }
                 else
                 {
-                    var positionSeed = (Mathf.RoundToInt(randomizerParameters.x) >> 2) * (Mathf.RoundToInt(randomizerParameters.z) >> 2);
+                    var positionSeed = (Mathf.RoundToInt(randomizerParameters.x) | 1) * (Mathf.RoundToInt(randomizerParameters.z) | 1) * (Mathf.RoundToInt(randomizerParameters.y) | 1);
                     var seed = switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION || id == default || id.Prop != 0 ? positionSeed : (int)id.Index;
                     var r = new Randomizer(seed);
                     var targetIdx = r.Int32((uint)switchInfo.SwitchItems.Length);

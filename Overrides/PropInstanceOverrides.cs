@@ -159,7 +159,7 @@ namespace Klyte.PropSwitcher.Overrides
             {
                 return null;
             }
-            Vector3 vector2 = new Vector3(buildingID, 0, j);
+            Vector3 vector2 = new Vector3(buildingID << 2, 0, j << 2);
             var id = new InstanceID { Building = buildingID };
             var result = GetTargetInfo(finalProp, ref id, ref positionOffset, ref angle, ref vector2, j);
             return result;

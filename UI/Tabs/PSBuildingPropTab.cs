@@ -32,6 +32,7 @@ namespace Klyte.PropSwitcher.UI
         internal override void EnablePickTool()
         {
             m_prefab.text = "";
+            m_selectedEntry = null;
             UpdateDetoursList();
             PropSwitcherMod.Controller.BuildingEditorToolInstance.OnBuildingSelect += (x) =>
             {

@@ -43,6 +43,7 @@ namespace Klyte.PropSwitcher.UI
             AddFilterableInput(Locale.Get("K45_PS_PARENTPREFAB", typeof(T).Name), uiHelper, out m_prefab, out UIListBox popup, OnChangeFilterParent, OnChangeParentPrefab, 100);
             m_prefab.tooltipLocaleID = "K45_PS_FIELDSFILTERINFORMATION";
             AddButtonInEditorRow(m_prefab, Commons.UI.SpriteNames.CommonsSpriteNames.K45_Dropper, EnablePickTool, Locale.Get("K45_PS_ENABLETOOLPICKER"), true, 30).zOrder = m_prefab.zOrder + 1;
+            m_prefab.eventLostFocus += (x, y) => UpdateDetoursList();
         }
         protected override void OnAddRule()
         {
