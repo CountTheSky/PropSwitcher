@@ -1,11 +1,13 @@
 ﻿using ColossalFramework;
 using ColossalFramework.Globalization;
 using ColossalFramework.UI;
+using Klyte.Commons;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Libraries;
+using Klyte.PropSwitcher.Overrides;
 using Klyte.PropSwitcher.Xml;
 using System;
 using System.Collections;
@@ -139,10 +141,8 @@ namespace Klyte.PropSwitcher.UI
         private void OnClearList()
         {
             PSPropData.Instance.PrefabChildEntries.Remove(m_prefab.text);
-            for (int i = 0; i < 32; i++)
-            {
-                RenderManager.instance.UpdateGroups(i);
-            }
+
+            PSOverrideCommons.Instance.RecalculateProps();
             UpdateDetoursList();
         }
         private void OnExportAsGlobal()

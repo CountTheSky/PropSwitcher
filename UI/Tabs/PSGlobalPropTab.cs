@@ -1,10 +1,12 @@
 ﻿using ColossalFramework;
 using ColossalFramework.Globalization;
 using ColossalFramework.UI;
+using Klyte.Commons;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.Libraries;
+using Klyte.PropSwitcher.Overrides;
 using Klyte.PropSwitcher.Xml;
 using System.Collections.Generic;
 using System.Linq;
@@ -55,10 +57,8 @@ namespace Klyte.PropSwitcher.UI
         private void OnClearList()
         {
             PSPropData.Instance.Entries = new XmlDictionary<PrefabChildEntryKey, SwitchInfo>();
-            for (int i = 0; i < 32; i++)
-            {
-                RenderManager.instance.UpdateGroups(i);
-            }
+
+            PSOverrideCommons.Instance.RecalculateProps();
             UpdateDetoursList();
         }
         private void OnExportData(string defaultText = null) => K45DialogControl.ShowModalPromptText(new K45DialogControl.BindProperties
@@ -153,10 +153,8 @@ namespace Klyte.PropSwitcher.UI
                     {
                         var newConfig = PSLibPropSettings.Instance.Get(selText);
                         PSPropData.Instance.Entries = newConfig.Data;
-                        for (int i = 0; i < 32; i++)
-                        {
-                            RenderManager.instance.UpdateGroups(i);
-                        }
+
+                        PSOverrideCommons.Instance.RecalculateProps();
                         UpdateDetoursList();
                     }
                     return true;

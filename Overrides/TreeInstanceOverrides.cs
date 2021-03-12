@@ -28,30 +28,25 @@ namespace Klyte.PropSwitcher.Overrides
 
 
 
-            AddRedirect(typeof(TreeInstance).GetMethod("RenderInstance", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("UpdateTree", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("RayCast", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("CheckOverlap", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("OverlapQuad", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("TerrainUpdated", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("RenderInstance", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObjRender"));
+            AddRedirect(typeof(TreeInstance).GetMethod("UpdateTree", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("RayCast", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("CheckOverlap", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("OverlapQuad", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("TerrainUpdated", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
+            AddRedirect(typeof(TreeInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObjCalc"));
             AddRedirect(typeof(TreeInstance).GetMethod("AfterTerrainUpdated", RedirectorUtils.allFlags), GetType().GetMethod("CheckValidTree"));
         }
 
         #region Instances
-        public static bool CheckValidTree(ref TreeInstance __instance) => GetTargetInfoWithPosition(PrefabCollection<TreeInfo>.GetPrefab(__instance.m_infoIndex), __instance.Position) != null;
-        public static IEnumerable<CodeInstruction> DetourRenederInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static bool CheckValidTree(ref TreeInstance __instance, uint treeID) => GetTargetInfoWithPosition(PrefabCollection<TreeInfo>.GetPrefab(__instance.m_infoIndex), __instance.Position, treeID, false) != null;
+        public static IEnumerable<CodeInstruction> DetourTreeInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessDetour(il, instr, "GetTargetInfoWithPosition", false, false);
+        public static IEnumerable<CodeInstruction> DetourTreeInstanceObjCalc(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessDetour(il, instr, "GetTargetInfoWithPosition", false, true);
+        public static IEnumerable<CodeInstruction> DetourTreeInstanceObjRender(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessDetour(il, instr, "GetTargetInfoWithPosition", true, false);
+        private static IEnumerable<CodeInstruction> ProcessDetour(ILGenerator il, IEnumerable<CodeInstruction> instr, string getMethod, bool isRender, bool isCalc = false)
         {
             var instrList = new List<CodeInstruction>(instr);
-            ProcessDetour(il, instrList, "GetTargetInfoWithPosition");
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-
-        private static void ProcessDetour(ILGenerator il, List<CodeInstruction> instrList, string getMethod)
-        {
             for (int i = 0; i < instrList.Count; i++)
             {
                 if (instrList[i].operand == typeof(TreeInstance).GetProperty("Info", RedirectorUtils.allFlags).GetGetMethod())
@@ -63,6 +58,8 @@ namespace Klyte.PropSwitcher.Overrides
                     instrList.InsertRange(i + 1, new List<CodeInstruction>{
                         new CodeInstruction(OpCodes.Ldarg_0),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstance).GetProperty("Position",RedirectorUtils.allFlags).GetGetMethod()),
+                        new CodeInstruction(isRender?OpCodes.Ldarg_2:OpCodes.Ldarg_1),
+                        new CodeInstruction(isCalc? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod(getMethod,RedirectorUtils.allFlags)),
                         new CodeInstruction(OpCodes.Stloc_S,localProp),
                         new CodeInstruction(OpCodes.Ldloc_S,localProp),
@@ -74,15 +71,18 @@ namespace Klyte.PropSwitcher.Overrides
                         }); ;
                     i += 2;
                 }
-
             }
+
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
         }
         #endregion
         #region BuildingAI
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, false, new CodeInstruction(OpCodes.Ldnull), new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldloc_S, 7));
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, false, new CodeInstruction(OpCodes.Ldnull), new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldloc_S, 16));
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_RenderProps(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, true, new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldarg_2), new CodeInstruction(OpCodes.Ldloc_S, 11));
-        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_Xxxxxx(IEnumerable<CodeInstruction> instr, ILGenerator il, bool isRender, CodeInstruction ldCamInfo, CodeInstruction ldArgBuildingId, CodeInstruction ldLocPropId)
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, false, true, new CodeInstruction(OpCodes.Ldnull), new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldloc_S, 7));
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, false, false, new CodeInstruction(OpCodes.Ldnull), new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldloc_S, 16));
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_RenderProps(IEnumerable<CodeInstruction> instr, ILGenerator il) => Transpile_BuildingAI_Xxxxxx(instr, il, true, false, new CodeInstruction(OpCodes.Ldarg_1), new CodeInstruction(OpCodes.Ldarg_2), new CodeInstruction(OpCodes.Ldloc_S, 11));
+        public static IEnumerable<CodeInstruction> Transpile_BuildingAI_Xxxxxx(IEnumerable<CodeInstruction> instr, ILGenerator il, bool isRender, bool isCalc, CodeInstruction ldCamInfo, CodeInstruction ldArgBuildingId, CodeInstruction ldLocPropId)
         {
             var instrList = new List<CodeInstruction>(instr);
             var posOffsetVar = il.DeclareLocal(typeof(Vector3));
@@ -96,9 +96,10 @@ namespace Klyte.PropSwitcher.Overrides
                         ldArgBuildingId,
                         ldLocPropId,
                         new CodeInstruction(OpCodes.Ldloca_S,posOffsetVar),
+                        new CodeInstruction(isCalc? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0),
                         new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromBuilding") ),
 
-                    }); ;
+                    });
                     i += 8;
                 }
                 if (instrList[i - 1].opcode == OpCodes.Ldfld && instrList[i - 1].operand is FieldInfo fi3 && fi3.Name == "m_position" && fi3.DeclaringType == typeof(BuildingInfo.Prop))
@@ -140,36 +141,17 @@ namespace Klyte.PropSwitcher.Overrides
             return instrList;
         }
 
-        public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalTree, j, location);
+        public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.Instance.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalTree, j, location);
         #endregion
         #region NetLane
 
-        public static IEnumerable<CodeInstruction> Transpile_NetLane_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> Transpile_NetLane_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => ApplyTreeRenderSelection(il, instr, true, 1, -1, 14, 5);
+        public static IEnumerable<CodeInstruction> Transpile_NetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => ApplyTreeRenderSelection(il, instr, false, 2, 27, 25, 5);
+        public static IEnumerable<CodeInstruction> Transpile_NetLane_RenderInstance(IEnumerable<CodeInstruction> instr, ILGenerator il) => ApplyTreeRenderSelection(il, instr, false, 3, 35, 33, 11);
+
+        private static IEnumerable<CodeInstruction> ApplyTreeRenderSelection(ILGenerator il, IEnumerable<CodeInstruction> instr, bool isCalc, int laneIdArgIdx, int selTreeIdx, int kIteratorIdx, int iIteratorIdx)
         {
             var instrList = new List<CodeInstruction>(instr);
-            ApplyTreeRenderSelection(il, instrList, 1, -1, 14, 5);
-            LogUtils.PrintMethodIL(instrList);
-            return instrList;
-        }
-        public static IEnumerable<CodeInstruction> Transpile_NetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
-        {
-            var instrList = new List<CodeInstruction>(instr);
-            ApplyTreeRenderSelection(il, instrList, 2, 27, 25, 5);
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-        public static IEnumerable<CodeInstruction> Transpile_NetLane_RenderInstance(IEnumerable<CodeInstruction> instr, ILGenerator il)
-        {
-            var instrList = new List<CodeInstruction>(instr);
-            ApplyTreeRenderSelection(il, instrList, 3, 35, 33, 11);
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-
-        private static void ApplyTreeRenderSelection(ILGenerator il, List<CodeInstruction> instrList, int laneIdArgIdx, int selTreeIdx, int kIteratorIdx, int iIteratorIdx)
-        {
             for (int i = 0; i < instrList.Count - 2; i++)
             {
                 if (instrList[i].opcode == OpCodes.Callvirt && instrList[i].operand is MethodInfo mi && mi.DeclaringType == typeof(TreeInfo) && mi.Name == "GetVariation")
@@ -189,6 +171,7 @@ namespace Klyte.PropSwitcher.Overrides
                                  new CodeInstruction(OpCodes.Ldarg_S,laneIdArgIdx),
                                  new CodeInstruction(OpCodes.Ldloc_S,iIteratorIdx),
                                  new CodeInstruction(OpCodes.Ldloc_S,kIteratorIdx),
+                                 new CodeInstruction(isCalc? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0),
                                  new CodeInstruction(OpCodes.Call, typeof(TreeInstanceOverrides).GetMethod("GetTargetInfoFromNetLane", RedirectorUtils.allFlags) ),
 
                             };
@@ -211,22 +194,35 @@ namespace Klyte.PropSwitcher.Overrides
                 }
 
             }
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
         }
 
         #endregion
 
-        public static TreeInfo GetTargetInfoWithoutId(TreeInfo info) => GetTargetInfo_internal(info);
-        public static TreeInfo GetTargetInfoWithPosition(TreeInfo info, Vector3 position) => GetTargetInfo_internal(info, position);
-        public static TreeInfo GetTargetInfoFromNetLane(TreeInfo info, uint laneId, int itemId, int iteration) => GetTargetInfo_internal(info, new Vector3(laneId, itemId, iteration), new InstanceID { NetLane = laneId }, itemId);
-        public static TreeInfo GetTargetInfoFromBuilding(TreeInfo info, CameraInfo camInfo, ushort buildingId, int itemId, out Vector3 positionOffset) => GetTargetInfo_internal(info, out positionOffset, new Vector3(buildingId, itemId), new InstanceID { Building = buildingId }, itemId);
-        private static TreeInfo GetTargetInfo_internal(TreeInfo info, Vector3 position = default, InstanceID id = default, int propIdx = -1) => GetTargetInfo_internal(info, out _, position, id, propIdx);
-        private static TreeInfo GetTargetInfo_internal(TreeInfo info, out Vector3 positionOffset, Vector3 position = default, InstanceID id = default, int propIdx = -1)
+        public static TreeInfo GetTargetInfoWithPosition(TreeInfo info, Vector3 position, uint treeId, bool isCalc) => GetTargetInfo_internal(info, isCalc, -1, position, new InstanceID { Tree = treeId });
+        public static TreeInfo GetTargetInfoFromNetLane(TreeInfo info, uint laneId, int itemId, int iteration, bool isCalc) => GetTargetInfo_internal(info, isCalc, ((itemId << 8) | (iteration & 0xff)), new Vector3(laneId, itemId, iteration), new InstanceID { NetLane = laneId });
+        public static TreeInfo GetTargetInfoFromBuilding(TreeInfo info, CameraInfo camInfo, ushort buildingId, int itemId, out Vector3 positionOffset, bool isCalc) => GetTargetInfo_internal(info, out positionOffset, isCalc, itemId, new Vector3(buildingId << 2, 0, itemId << 2), new InstanceID { Building = buildingId });
+        private static TreeInfo GetTargetInfo_internal(TreeInfo info, bool isCalc, int propIdx, Vector3 position = default, InstanceID id = default) => GetTargetInfo_internal(info, out _, isCalc, propIdx, position, id);
+        private static TreeInfo GetTargetInfo_internal(TreeInfo info, out Vector3 positionOffset, bool isCalc, int propIdx, Vector3 position = default, InstanceID id = default)
         {
-            float angle = 0;
-            positionOffset = default;
-            return info is null
-                ? null
-                : PSOverrideCommons.GetTargetInfo_internal(info, ref id, ref positionOffset, ref angle, ref position, propIdx, out Item result) ? result?.CachedTree : info;
+            if (PSOverrideCommons.Instance.GetTargetInfo_internal(info, ref id, ref position, propIdx, isCalc, out Item result))
+            {
+                if (result != null)
+                {
+                    positionOffset = result.PositionOffset;
+                    return result.CachedTree;
+                }
+                positionOffset = default;
+                return null;
+            }
+            else
+            {
+                positionOffset = default;
+                return info;
+            }
         }
+
     }
 }

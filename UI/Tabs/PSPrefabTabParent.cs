@@ -5,6 +5,7 @@ using ColossalFramework.UI;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
+using Klyte.PropSwitcher.Overrides;
 using Klyte.PropSwitcher.Xml;
 using System;
 using System.Collections;
@@ -44,6 +45,7 @@ namespace Klyte.PropSwitcher.UI
         protected UIButton m_addButton;
         private UIPanel m_listLoadingPlaceholder;
         private UIPanel m_listContainer;
+        private UILabel m_labelSelectionDescription;
 
         protected UIPagingBar m_pagebar;
         protected PrefabChildEntryKey m_selectedEntry;
@@ -101,9 +103,10 @@ namespace Klyte.PropSwitcher.UI
             m_actionBar.autoFitChildrenVertically = true;
             var m_topHelper = new UIHelperExtension(m_actionBar);
 
-            AddLabel(Locale.Get(TitleLocale), m_topHelper, out UILabel m_labelSelectionDescription, out UIPanel m_containerSelectionDescription, false);
+            AddLabel(Locale.Get(TitleLocale), m_topHelper, out m_labelSelectionDescription, out UIPanel m_containerSelectionDescription, false);
             m_labelSelectionDescription.size = new Vector2(m_containerSelectionDescription.width - m_containerSelectionDescription.padding.left - m_containerSelectionDescription.padding.right - 4, 30);
             m_labelSelectionDescription.padding.top = 8;
+            m_labelSelectionDescription.processMarkup = true;
 
             AddActionButtons(m_labelSelectionDescription);
 
@@ -194,13 +197,16 @@ namespace Klyte.PropSwitcher.UI
                 return;
             }
             currentList[currentEditingKey].SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;
-            for (int i = 0; i < 32; i++)
-            {
-                RenderManager.instance.UpdateGroups(i);
-            }
+
+            PSOverrideCommons.Instance.RecalculateProps();
             m_cachedEntries = null;
             UpdateDetoursList();
         }
+
+        public void Update() => 
+            m_labelSelectionDescription.suffix = PSOverrideCommons.Instance.CurrentStatusRecalculation != null
+                ? $" <color yellow>({PSOverrideCommons.Instance.CurrentStatusRecalculation})</color>"
+                : "";
 
         #region Prefab selectors callbacks
         protected virtual string[] OnChangeFilterOut(string arg) =>
@@ -303,10 +309,7 @@ namespace Klyte.PropSwitcher.UI
         public static IEnumerator UpdateAllRenderGroups()
         {
             yield return 0;
-            for (int i = 0; i < 32; i++)
-            {
-                RenderManager.instance.UpdateGroups(i);
-            }
+            PSOverrideCommons.Instance.RecalculateProps();
         }
 
         protected void CreateRowPlaceHolder(float targetWidth, UIPanel panel, out UILabel column1, out UILabel column2, out UILabel column3, out UILabel actionsContainer)
@@ -548,10 +551,7 @@ namespace Klyte.PropSwitcher.UI
             m_selectedEntry = GetEntryFor(v);
             m_rotationOffset.parent.isVisible = GetCurrentOutValue(out string val) && IsProp(v) && !val.IsNullOrWhiteSpace();
         }
-        protected virtual void DoOnChangeValueOut(string v)
-        {
-            m_rotationOffset.parent.isVisible = IsProp(m_in.text) && !v.IsNullOrWhiteSpace();
-        }
+        protected virtual void DoOnChangeValueOut(string v) => m_rotationOffset.parent.isVisible = IsProp(m_in.text) && !v.IsNullOrWhiteSpace();
 
         internal abstract bool IsPropAvailable(KeyValuePair<string, TextSearchEntry> x);
         protected virtual void WriteExtraSettings(SwitchInfo switchInfo, Item currentItem) => switchInfo.SeedSource = m_seedSource.isChecked ? RandomizerSeedSource.INSTANCE : RandomizerSeedSource.POSITION;

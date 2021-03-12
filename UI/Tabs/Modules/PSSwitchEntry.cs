@@ -1,9 +1,11 @@
 ﻿using ColossalFramework;
 using ColossalFramework.Globalization;
 using ColossalFramework.UI;
+using Klyte.Commons;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
+using Klyte.PropSwitcher.Overrides;
 using Klyte.PropSwitcher.Xml;
 using System.Linq;
 using UnityEngine;
@@ -208,10 +210,8 @@ namespace Klyte.PropSwitcher.UI
             {
                 LogUtils.DoWarnLog($"m_mainRow.MainPanelController = {m_mainRow?.MainPanelController}|m_mainRow.m_currentFromSource={m_mainRow?.m_currentFromSource}| m_mainRow.m_currentLoadedInfo ={m_mainRow?.m_currentLoadedInfo}");
                 (m_mainRow.MainPanelController.TargetDictionary(m_mainRow.m_parentPrefabName) ?? m_mainRow.MainPanelController.CreateTargetDictionary(m_mainRow.m_parentPrefabName))[m_mainRow.m_currentFromSource] = XmlUtils.DefaultXmlDeserialize<SwitchInfo>(XmlUtils.DefaultXmlSerialize(m_mainRow.m_currentLoadedInfo));
-                for (int i = 0; i < 32; i++)
-                {
-                    RenderManager.instance.UpdateGroups(i);
-                }
+
+                PSOverrideCommons.Instance.RecalculateProps();
 
                 m_mainRow.MainPanelController.UpdateDetoursList();
                 eventParam.Use();

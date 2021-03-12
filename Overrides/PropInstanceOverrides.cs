@@ -2,7 +2,6 @@
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Utils;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
@@ -22,7 +21,7 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(PropInstance).GetMethod("RenderInstance", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourRenederInstanceObj"));
             AddRedirect(typeof(PropInstance).GetMethod("UpdateProp", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
             AddRedirect(typeof(PropInstance).GetMethod("CheckOverlap", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
-            AddRedirect(typeof(PropInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethods"));
+            AddRedirect(typeof(PropInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourPropInstanceObjMethodsCalc"));
 
             AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_CalculatePropGroupData"));//7
             AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_PopulatePropGroupData"));//16
@@ -33,12 +32,12 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(NetLane).GetMethod("RenderInstance", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_RenderInstance"));
         }
 
-        public static void AfterEndRenderOverlayBuilding(CameraInfo cameraInfo) => PSOverrideCommons.OnRenderOverlay(cameraInfo);
+        public static void AfterEndRenderOverlayBuilding(CameraInfo cameraInfo) => PSOverrideCommons.Instance.OnRenderOverlay(cameraInfo);
 
         #region BuildingAI
-        public static IEnumerable<CodeInstruction> TranspileBuildingAI_CalculatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(7, instr, il);
-        public static IEnumerable<CodeInstruction> TranspileBuildingAI_PopulatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(16, instr, il);
-        private static IEnumerable<CodeInstruction> TranspileBuildingAI_XxxxPropGroupData(int jVarIdx, IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> TranspileBuildingAI_CalculatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(7, instr, il, true);
+        public static IEnumerable<CodeInstruction> TranspileBuildingAI_PopulatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(16, instr, il, false);
+        private static IEnumerable<CodeInstruction> TranspileBuildingAI_XxxxPropGroupData(int jVarIdx, IEnumerable<CodeInstruction> instr, ILGenerator il, bool isCalc)
         {
             var instrList = new List<CodeInstruction>(instr);
             var angleVar = il.DeclareLocal(typeof(float));
@@ -55,6 +54,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldloca_S,angleVar),
                         new CodeInstruction(OpCodes.Ldloca_S,posVar),
                         new CodeInstruction(OpCodes.Ldloc_S, jVarIdx),
+                        new CodeInstruction(isCalc?OpCodes.Ldc_I4_1:OpCodes.Ldc_I4_0),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculateTargetProp",RedirectorUtils.allFlags)),
                         });
                     i += 6;
@@ -99,6 +99,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldloca_S,angleVar),
                         new CodeInstruction(OpCodes.Ldloca_S,posOffsetVar),
                         new CodeInstruction(OpCodes.Ldloc_S,11),
+                        new CodeInstruction(OpCodes.Ldc_I4_0),
                         new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculateTargetProp",RedirectorUtils.allFlags)),
                         });
                     i += 6;
@@ -148,9 +149,9 @@ namespace Klyte.PropSwitcher.Overrides
             return instrList;
         }
 
-        public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalProp, j, location);
+        public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.Instance.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalProp, j, location);
 
-        public static PropInfo BuildingAI_CalculateTargetProp(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle, out Vector3 positionOffset, ushort j)
+        public static PropInfo BuildingAI_CalculateTargetProp(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle, out Vector3 positionOffset, ushort j, bool isCalc)
         {
             angle = 0;
             positionOffset = default;
@@ -161,7 +162,7 @@ namespace Klyte.PropSwitcher.Overrides
             }
             Vector3 vector2 = new Vector3(buildingID << 2, 0, j << 2);
             var id = new InstanceID { Building = buildingID };
-            var result = GetTargetInfo(finalProp, ref id, ref positionOffset, ref angle, ref vector2, j);
+            var result = GetTargetInfo(finalProp, ref id, ref positionOffset, ref angle, ref vector2, isCalc, j);
             return result;
         }
 
@@ -169,164 +170,170 @@ namespace Klyte.PropSwitcher.Overrides
         #endregion
 
         #region NetLane
-        public static IEnumerable<CodeInstruction> TranspileNetLane_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> TranspileNetLane_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessInstructions_NetLane(il, instr, true, 1, 5, 10, "CLC");
+        public static IEnumerable<CodeInstruction> TranspileNetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessInstructions_NetLane(il, instr, false, 2, 5, 12, "POP");
+        public static IEnumerable<CodeInstruction> TranspileNetLane_RenderInstance(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessInstructions_NetLane(il, instr, false, 3, 11, 19, "RND");
+
+        private static IEnumerable<CodeInstruction> ProcessInstructions_NetLane(ILGenerator il, IEnumerable<CodeInstruction> instr, bool isCalc, int argIdxLaneId, int propIdIdx, int jIdx, string source)
         {
             var instrList = new List<CodeInstruction>(instr);
-
-            ProcessInstructions_NetLane(il, instrList, true, 1, 8, 11, 10, 4, 12, 7);//, "Calculate");
-
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-        public static IEnumerable<CodeInstruction> TranspileNetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il)
-        {
-            var instrList = new List<CodeInstruction>(instr);
-
-            ProcessInstructions_NetLane(il, instrList, true, 2, 9, 14, 12, 6, 20, 11);//, "Populate");
-
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-        public static IEnumerable<CodeInstruction> TranspileNetLane_RenderInstance(IEnumerable<CodeInstruction> instr, ILGenerator il)
-        {
-            var instrList = new List<CodeInstruction>(instr);
-
-            ProcessInstructions_NetLane(il, instrList, false, 3, 16, 21, 19, 12);//, "Render");
-
-            LogUtils.PrintMethodIL(instrList);
-
-            return instrList;
-        }
-
-        private static void ProcessInstructions_NetLane(ILGenerator il, List<CodeInstruction> instrList, bool relocateLayerCheck, byte laneIdArgIdx, int finalPropIdx, int variationIdx, int jIdx, byte propDataIdx, byte hasPropsIdx = 0, byte layerArgIdx = 0)//, string sourceStr)
-        {
             var angleOffsetVar = il.DeclareLocal(typeof(float));
-            for (int i = 1; i < instrList.Count - 3; i++)
+            for (int i = 2; i < instrList.Count; i++)
             {
-                if (relocateLayerCheck && instrList[i - 1].opcode == OpCodes.Ldarg_S && instrList[i - 1].operand is byte b && b == hasPropsIdx)
+                if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalProp")
                 {
-                    instrList[i].opcode = OpCodes.Ldc_I4_0;
-                }
-
-                if (relocateLayerCheck && instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == finalPropIdx
-                    && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_prefabDataLayer"
-                    && instrList[i + 2].opcode == OpCodes.Ldarg_S && instrList[i + 2].operand is byte b1 && b1 == layerArgIdx
-                    && instrList[i + 3].opcode == OpCodes.Beq)
-                {
-                    instrList.RemoveRange(i, 8);
-                }
-
-                if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder fi && fi.LocalIndex == variationIdx)
-                {
-                    var localProp = il.DeclareLocal(typeof(PropInfo));
-                    var localHasProp = il.DeclareLocal(typeof(bool));
-                    var endloopLabel = il.DefineLabel();
-                    var lastInsertLabel = il.DefineLabel();
-                    var lastInsert = new CodeInstruction(OpCodes.Ldloc_S, localProp);
-                    lastInsert.labels.Add(lastInsertLabel);
-
-                    instrList.InsertRange(i - 1,
-                    new List<CodeInstruction>{
-                        new CodeInstruction(OpCodes.Ldloc_S,jIdx),
-                        new CodeInstruction(OpCodes.Ldarg_S,laneIdArgIdx),
-                  //    new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
-                    //  new CodeInstruction(OpCodes.Ldstr,sourceStr),
+                    instrList.InsertRange(i + 1, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldarg_S,argIdxLaneId),
                         new CodeInstruction(OpCodes.Ldloca_S,angleOffsetVar),
-                        new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_CalculateGroupData",RedirectorUtils.allFlags)),
-                        new CodeInstruction(OpCodes.Stloc_S,localProp)
-                    }
-                    .Union(relocateLayerCheck ?
-                            new List<CodeInstruction>{
-                            new CodeInstruction(OpCodes.Ldloc_S,localProp),
-                            new CodeInstruction(OpCodes.Ldnull),
-                            new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
-                            new CodeInstruction(OpCodes.Stloc_S,localHasProp),
-                            new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
-                            new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
-                            new CodeInstruction(OpCodes.Ldind_U1),
-                            new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
-                            new CodeInstruction(OpCodes.Or),
-                            new CodeInstruction(OpCodes.Stind_I1),
-                            new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
-                            new CodeInstruction(OpCodes.Brtrue,endloopLabel ),
-                            new CodeInstruction(OpCodes.Ldloc_S,localProp),
-                            new CodeInstruction(OpCodes.Ldfld,typeof(PrefabInfo).GetField("m_prefabDataLayer",RedirectorUtils.allFlags)),
-                            new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
-                            new CodeInstruction(OpCodes.Beq,lastInsertLabel),
-                            new CodeInstruction(OpCodes.Ldloc_S,localProp),
-                            new CodeInstruction(OpCodes.Ldfld,typeof(PropInfo).GetField("m_effectLayer",RedirectorUtils.allFlags)),
-                            new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
-                            new CodeInstruction(OpCodes.Bne_Un,endloopLabel),
-                            lastInsert
-                        } : new List<CodeInstruction>() {
-                            new CodeInstruction(OpCodes.Ldloc_S,localProp),
-                            new CodeInstruction(OpCodes.Ldnull),
-                            new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
-                            new CodeInstruction(OpCodes.Brtrue,endloopLabel),
-                            lastInsert }));
-                    while (i < instrList.Count)
-                    {
-                        if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb && lb.LocalIndex == jIdx)
-                        {
-                            instrList[i].labels.Add(endloopLabel);
-                            break;
-                        }
-                        i++;
-                    }
-                    break;
+                        new CodeInstruction(OpCodes.Ldloc_S, jIdx),
+                        new CodeInstruction(OpCodes.Ldloc_S, propIdIdx),
+                        new CodeInstruction(isCalc?OpCodes.Ldc_I4_1:OpCodes.Ldc_I4_0),
+                        new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_CalculateTargetProp",RedirectorUtils.allFlags)),
+                        });
+                    i += 6;
                 }
-            }
-            for (int i = 0; i < instrList.Count - 3; i++)
-            {
-                if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == propDataIdx
-                    && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_angle")
+                if (instrList[i - 1].opcode == OpCodes.Ldfld && instrList[i - 1].operand is FieldInfo fi2 && fi2.Name == "m_angle" && fi2.DeclaringType == typeof(NetLaneProps.Prop))
                 {
                     instrList.InsertRange(i, new List<CodeInstruction>{
                         new CodeInstruction(OpCodes.Ldloc_S,angleOffsetVar),
                         new CodeInstruction(OpCodes.Add),
                         });
-                    i += 6;
+                    i += 3;
                 }
+
             }
-        }
+            LogUtils.PrintMethodIL(instrList);
+            return instrList;
 
-        public static PropInfo NetLane_CalculateGroupData(PropInfo finalInfo, int j, uint laneId, out float angleOffset)//, int layer, string source)
-        {
-            angleOffset = 0;
-            Vector3 offsetToAdd = default;
-            if (finalInfo == null)
-            {
-                return null;
-            }
 
-            ref NetLane thiz = ref NetManager.instance.m_lanes.m_buffer[laneId];
 
-            var id = new InstanceID { NetSegment = thiz.m_segment };
-            var vector3 = thiz.m_bezier.Position(1f / j);
-            vector3.x += j;
-            var result = GetTargetInfo(finalInfo, ref id, ref offsetToAdd, ref angleOffset, ref vector3);
-            //if (result != finalInfo)
+            //for (int i = 1; i < instrList.Count - 3; i++)
             //{
-            //    LogUtils.DoWarnLog($"s={thiz.m_segment}; l= {laneId}; j = {j}; vector = {vector}; src = {source}; layer = {layer};  finalInfo = {finalInfo} == prop = {result}; layers = {result.m_prefabDataLayer} | {result.m_effectLayer}");
+            //    if (relocateLayerCheck && instrList[i - 1].opcode == OpCodes.Ldarg_S && instrList[i - 1].operand is byte b && b == hasPropsIdx)
+            //    {
+            //        instrList[i].opcode = OpCodes.Ldc_I4_0;
+            //    }
+
+            //    if (relocateLayerCheck && instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == finalPropIdx
+            //        && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_prefabDataLayer"
+            //        && instrList[i + 2].opcode == OpCodes.Ldarg_S && instrList[i + 2].operand is byte b1 && b1 == layerArgIdx
+            //        && instrList[i + 3].opcode == OpCodes.Beq)
+            //    {
+            //        instrList.RemoveRange(i, 8);
+            //    }
+
+            //    if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder fi && fi.LocalIndex == variationIdx)
+            //    {
+            //        var localProp = il.DeclareLocal(typeof(PropInfo));
+            //        var localHasProp = il.DeclareLocal(typeof(bool));
+            //        var endloopLabel = il.DefineLabel();
+            //        var lastInsertLabel = il.DefineLabel();
+            //        var lastInsert = new CodeInstruction(OpCodes.Ldloc_S, localProp);
+            //        lastInsert.labels.Add(lastInsertLabel);
+
+            //        instrList.InsertRange(i - 1,
+            //        new List<CodeInstruction>{
+            //            new CodeInstruction(OpCodes.Ldarg_S,propIdIdx),
+            //            new CodeInstruction(OpCodes.Ldloc_S,jIdx),
+            //            new CodeInstruction(OpCodes.Ldarg_S,laneIdArgIdx),
+            //      //    new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
+            //        //  new CodeInstruction(OpCodes.Ldstr,sourceStr),
+            //            new CodeInstruction(OpCodes.Ldloca_S,angleOffsetVar),
+            //            new CodeInstruction(isCalc?OpCodes.Ldc_I4_1:OpCodes.Ldc_I4_0),
+            //            new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_GetProp",RedirectorUtils.allFlags)),
+            //            new CodeInstruction(OpCodes.Stloc_S,localProp)
+            //        }
+            //        .Union(relocateLayerCheck ?
+            //                new List<CodeInstruction>{
+            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
+            //                new CodeInstruction(OpCodes.Ldnull),
+            //                new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
+            //                new CodeInstruction(OpCodes.Stloc_S,localHasProp),
+            //                new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
+            //                new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
+            //                new CodeInstruction(OpCodes.Ldind_U1),
+            //                new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
+            //                new CodeInstruction(OpCodes.Or),
+            //                new CodeInstruction(OpCodes.Stind_I1),
+            //                new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
+            //                new CodeInstruction(OpCodes.Brtrue,endloopLabel ),
+            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
+            //                new CodeInstruction(OpCodes.Ldfld,typeof(PrefabInfo).GetField("m_prefabDataLayer",RedirectorUtils.allFlags)),
+            //                new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
+            //                new CodeInstruction(OpCodes.Beq,lastInsertLabel),
+            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
+            //                new CodeInstruction(OpCodes.Ldfld,typeof(PropInfo).GetField("m_effectLayer",RedirectorUtils.allFlags)),
+            //                new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
+            //                new CodeInstruction(OpCodes.Bne_Un,endloopLabel),
+            //                lastInsert
+            //            } : new List<CodeInstruction>() {
+            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
+            //                new CodeInstruction(OpCodes.Ldnull),
+            //                new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
+            //                new CodeInstruction(OpCodes.Brtrue,endloopLabel),
+            //                lastInsert }));
+            //        while (i < instrList.Count)
+            //        {
+            //            if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb && lb.LocalIndex == jIdx)
+            //            {
+            //                instrList[i].labels.Add(endloopLabel);
+            //                break;
+            //            }
+            //            i++;
+            //        }
+            //        break;
+            //    }
             //}
-            return result;
+            //for (int i = 0; i < instrList.Count - 3; i++)
+            //{
+            //    if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == propDataIdx
+            //        && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_angle")
+            //    {
+            //        instrList.InsertRange(i, new List<CodeInstruction>{
+            //            new CodeInstruction(OpCodes.Ldloc_S,angleOffsetVar),
+            //            new CodeInstruction(OpCodes.Add),
+            //            });
+            //        i += 6;
+            //    }
+            //}
         }
+
+        public static PropInfo NetLane_CalculateTargetProp(PropInfo finalInfo, uint laneId, out float angle, int j, int propIdx, bool isCalc)
+        {
+            angle = 0;
+            Vector3 offsetPosition = default;
+            var vector3 = new Vector3(laneId, propIdx, j);
+
+            var id = new InstanceID { NetLane = laneId };
+            var propIdxTgt = ((propIdx << 8) | (j & 0xff));
+            return GetTargetInfo(finalInfo, ref id, ref offsetPosition, ref angle, ref vector3, isCalc, propIdxTgt);
+        }
+
+        //public static PropInfo NetLane_GetProp(PropInfo finalInfo, int propIdx, int j, uint laneId, out float angleOffset, bool isCalc)
+        //{
+        //    angleOffset = 0;
+        //    Vector3 offsetToAdd = default;
+        //    var vector3 = new Vector3(laneId, propIdx, j);
+        //    var id = new InstanceID { NetLane = laneId };
+        //    return GetTargetInfo(finalInfo, ref id, ref offsetToAdd, ref angleOffset, ref vector3, isCalc, ((propIdx << 8) | (j & 0xff)));
+        //}
 
         #endregion
 
-        public static bool ApplySwitchGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle) => (info = GetTargetInfoGlobal(ref info, ref position, propID, ref angle)) != null;
+        public static bool ApplySwitchGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle) => (info = GetTargetInfoGlobal(ref info, ref position, propID, ref angle, false)) != null;
 
 
-        public static PropInfo GetTargetInfoGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle)
+        public static PropInfo GetTargetInfoGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle, bool isCalc)
         {
             var id = new InstanceID { Prop = propID };
             var offsetToAdd = default(Vector3);
-            return GetTargetInfo(info, ref id, ref offsetToAdd, ref angle, ref position);
+            return GetTargetInfo(info, ref id, ref offsetToAdd, ref angle, ref position, isCalc, -1);
         }
 
-        public static IEnumerable<CodeInstruction> DetourPropInstanceObjMethods(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        public static IEnumerable<CodeInstruction> DetourPropInstanceObjMethods(IEnumerable<CodeInstruction> instr, ILGenerator il) => DetourPropInstanceObjMethods_exec(instr, il, false);
+        public static IEnumerable<CodeInstruction> DetourPropInstanceObjMethodsCalc(IEnumerable<CodeInstruction> instr, ILGenerator il) => DetourPropInstanceObjMethods_exec(instr, il, true);
+
+        public static IEnumerable<CodeInstruction> DetourPropInstanceObjMethods_exec(IEnumerable<CodeInstruction> instr, ILGenerator il, bool isCalc)
         {
             var instrList = new List<CodeInstruction>(instr);
             var localAngle = il.DeclareLocal(typeof(float));
@@ -359,6 +366,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Call, typeof(PropInstance).GetProperty("Angle").GetGetMethod()),
                         new CodeInstruction(OpCodes.Stloc_S, localAngle),
                         new CodeInstruction(OpCodes.Ldloca_S, localAngle),
+                        new CodeInstruction(isCalc?OpCodes.Ldc_I4_1:OpCodes.Ldc_I4_0),
                         new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("GetTargetInfoGlobal",RedirectorUtils.allFlags)),
                         new CodeInstruction(OpCodes.Stloc_S, localInfo),
                         new CodeInstruction(OpCodes.Ldloc_S, localInfo),
@@ -410,6 +418,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Call, typeof(PropInstance).GetProperty("Angle").GetGetMethod()),
                         new CodeInstruction(OpCodes.Stloc_S, localAngle),
                         new CodeInstruction(OpCodes.Ldloca_S, localAngle),
+                        new CodeInstruction(OpCodes.Ldc_I4_0),
                         new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("GetTargetInfoGlobal",RedirectorUtils.allFlags)),
                         new CodeInstruction(OpCodes.Stloc_S, localInfo),
                         new CodeInstruction(OpCodes.Ldloc_S, localInfo),
@@ -428,16 +437,24 @@ namespace Klyte.PropSwitcher.Overrides
             return instrList;
         }
 
-        public static PropInfo GetTargetInfoWithoutId(PropInfo info, Vector3 vector3)
+        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 position, bool isCalc, int propIdx) => GetTargetInfo_internal(info, ref id, ref offsetToAdd, ref angle, ref position, propIdx, isCalc);
+
+        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 position, int propIdx, bool isCalc)
         {
-            InstanceID id = default;
-            float angle = 0;
-            Vector3 offsetToAdd = default;
-            return GetTargetInfo_internal(info, ref id, ref offsetToAdd, ref angle, ref vector3, -1);
+            if (PSOverrideCommons.Instance.GetTargetInfo_internal(info, ref id, ref position, propIdx, isCalc, out Item result))
+            {
+                if (result != null)
+                {                   
+                    offsetToAdd += result.PositionOffset;
+                    angle += result.RotationOffset;
+                    return result.CachedProp;
+                }
+                return null;
+            }
+            else
+            {
+                return info;
+            }
         }
-
-        public static PropInfo GetTargetInfo(PropInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 position, int propIdx = -1) => GetTargetInfo_internal(info, ref id, ref offsetToAdd, ref angle, ref position, propIdx);
-
-        private static PropInfo GetTargetInfo_internal(PropInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 position, int propIdx) => PSOverrideCommons.GetTargetInfo_internal(info, ref id, ref offsetToAdd, ref angle, ref position, propIdx, out Item result) ? result?.CachedProp : info;
     }
 }

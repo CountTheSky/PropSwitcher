@@ -5,6 +5,7 @@ using Klyte.Commons;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
+using Klyte.PropSwitcher.Overrides;
 using Klyte.PropSwitcher.Tools;
 using Klyte.PropSwitcher.Xml;
 using System;
@@ -210,10 +211,7 @@ namespace Klyte.PropSwitcher
                 }, (x) => true);
 
             }
-            for (int i = 0; i < 32; i++)
-            {
-                RenderManager.instance.UpdateGroups(i);
-            }
+            PSOverrideCommons.Instance.RecalculateProps();
             LogUtils.DoLog("LOADING GLOBAL CONFIG END -----------------------------");
         }
 
@@ -231,5 +229,7 @@ namespace Klyte.PropSwitcher
                 throw new Exception("The file wasn't recognized as a valid descriptor!");
             }
         }
+
+        private void OnDestroy() => PSOverrideCommons.Reset();
     }
 }

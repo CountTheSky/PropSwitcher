@@ -12,7 +12,7 @@ namespace Klyte.PropSwitcher.Shared
         {
             angleOffset = 0;
             Vector3 pos = default;
-            return PropInstanceOverrides.GetTargetInfo(originalProp, ref id, ref pos, ref angleOffset, ref position);
+            return PropInstanceOverrides.GetTargetInfo(originalProp, ref id, ref pos, ref angleOffset, ref position, false, -1);
         }
     }
 

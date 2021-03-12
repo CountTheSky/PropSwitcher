@@ -4,6 +4,8 @@ using Klyte.Commons.Utils;
 using Klyte.PropSwitcher.Data;
 using Klyte.PropSwitcher.UI;
 using Klyte.PropSwitcher.Xml;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using static Klyte.PropSwitcher.Xml.SwitchInfo;
@@ -13,34 +15,68 @@ namespace Klyte.PropSwitcher.Overrides
 {
     internal class PSOverrideCommons
     {
-        private static readonly HashSet<Vector4> renderOverlayCirclePositions = new HashSet<Vector4>();
+        private static PSOverrideCommons instance;
 
-        public static bool GetTargetInfo_internal(PrefabInfo info, ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, ref Vector3 randomizerParameters, int propIdx, out Item result)
+        public static PSOverrideCommons Instance
         {
+            get
+            {
+                if (instance == null)
+                {
+                    instance = new PSOverrideCommons();
+                }
+                return instance;
+            }
+        }
+
+        public static void Reset() => instance = null;
+
+        internal readonly Dictionary<long, Item> SwitcherCache = new Dictionary<long, Item>();
+
+        private readonly HashSet<Vector4> renderOverlayCirclePositions = new HashSet<Vector4>();
+
+        private long ToCacheKey(ref InstanceID id, int propIdx) => ((long)id.Index << 16) | ((long)propIdx & ((1 << 16) - 1));
+
+        public bool GetTargetInfo_internal(PrefabInfo info, ref InstanceID id, ref Vector3 randomizerParameters, int propIdx, bool isCalc, out Item result)
+        {
+            var cacheKey = ToCacheKey(ref id, propIdx);
+            if (!isCalc)
+            {
+                return SwitcherCache.TryGetValue(cacheKey, out result) && !(result is null);
+            }
+
+
             if (info == null || PSPropData.Instance?.Entries == null)
             {
                 result = null;
                 return false;
             }
+
+            if (SwitcherCache.ContainsKey(cacheKey))
+            {
+                SwitcherCache.Remove(cacheKey);
+            }
+
             string parentName = null;
-            if (id.NetSegment != 0)
+            var refId = id;
+            if (refId.NetLane != 0)
             {
-                parentName = NetManager.instance.m_segments.m_buffer[id.NetSegment].Info.name;
+                refId.NetSegment = NetManager.instance.m_lanes.m_buffer[refId.NetLane].m_segment;
+            }
+            if (refId.NetSegment != 0)
+            {
+                parentName = NetManager.instance.m_segments.m_buffer[refId.NetSegment].Info.name;
 
             }
-            else if (id.NetNode != 0)
+            else if (refId.NetNode != 0)
             {
-                parentName = NetManager.instance.m_nodes.m_buffer[id.NetNode].Info.name;
+                parentName = NetManager.instance.m_nodes.m_buffer[refId.NetNode].Info.name;
 
             }
-            else if (id.NetLane != 0)
-            {
-                parentName = NetManager.instance.m_segments.m_buffer[NetManager.instance.m_lanes.m_buffer[id.NetLane].m_segment].Info.name;
 
-            }
-            else if (id.Building != 0)
+            else if (refId.Building != 0)
             {
-                parentName = BuildingManager.instance.m_buildings.m_buffer[id.Building].Info.name;
+                parentName = BuildingManager.instance.m_buildings.m_buffer[refId.Building].Info.name;
             }
 
             XmlDictionary<PrefabChildEntryKey, SwitchInfo> switchInfoDictGlobal = null;
@@ -54,17 +90,19 @@ namespace Klyte.PropSwitcher.Overrides
                 {
                     if (propIdx >= 0 && ((switchInfoDict?.TryGetValue(indexKey, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(indexKey, out switchInfo) ?? false)))
                     {
-                        if (TryApplyInfo(ref id, ref offsetToAdd, ref angle, switchInfo, ref infoItem, ref randomizerParameters))
+                        if (TryApplyInfo(ref refId, switchInfo, ref infoItem, ref randomizerParameters))
                         {
                             result = infoItem;
+                            SwitcherCache[cacheKey] = result;
                             return true;
                         }
                     }
                     if ((switchInfoDict?.TryGetValue(defaultKey, out switchInfo) ?? false) || (switchInfoDictGlobal?.TryGetValue(defaultKey, out switchInfo) ?? false))
                     {
-                        if (TryApplyInfo(ref id, ref offsetToAdd, ref angle, switchInfo, ref infoItem, ref randomizerParameters))
+                        if (TryApplyInfo(ref refId, switchInfo, ref infoItem, ref randomizerParameters))
                         {
                             result = infoItem;
+                            SwitcherCache[cacheKey] = result;
                             return true;
                         }
                     }
@@ -73,9 +111,10 @@ namespace Klyte.PropSwitcher.Overrides
             if (PSPropData.Instance.Entries.ContainsKey(defaultKey))
             {
                 switchInfo = PSPropData.Instance.Entries[defaultKey];
-                if (TryApplyInfo(ref id, ref offsetToAdd, ref angle, switchInfo, ref infoItem, ref randomizerParameters))
+                if (TryApplyInfo(ref refId, switchInfo, ref infoItem, ref randomizerParameters))
                 {
                     result = infoItem;
+                    SwitcherCache[cacheKey] = result;
                     return true;
                 }
             }
@@ -84,7 +123,7 @@ namespace Klyte.PropSwitcher.Overrides
 
         }
 
-        private static bool TryApplyInfo(ref InstanceID id, ref Vector3 offsetToAdd, ref float angle, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 randomizerParameters)
+        private static bool TryApplyInfo(ref InstanceID id, SwitchInfo switchInfo, ref SwitchInfo.Item infoItem, ref Vector3 randomizerParameters)
         {
             if (switchInfo.SwitchItems.Length > 0)
             {
@@ -94,24 +133,19 @@ namespace Klyte.PropSwitcher.Overrides
                 }
                 else
                 {
-                    var positionSeed = (Mathf.RoundToInt(randomizerParameters.x) | 1) * (Mathf.RoundToInt(randomizerParameters.z) | 1) * (Mathf.RoundToInt(randomizerParameters.y) | 1);
+                    var positionSeed = ((Mathf.RoundToInt(randomizerParameters.x) | 1) * (Mathf.RoundToInt(randomizerParameters.z) | 1)) + (Math.Abs(Mathf.RoundToInt(randomizerParameters.y) | 1) * 17);
                     var seed = switchInfo.SeedSource == SwitchInfo.RandomizerSeedSource.POSITION || id == default || id.Prop != 0 ? positionSeed : (int)id.Index;
                     var r = new Randomizer(seed);
                     var targetIdx = r.Int32((uint)switchInfo.SwitchItems.Length);
-
-                    //   LogUtils.DoWarnLog($"Getting model seed: id = b:{id.Building} ns:{id.NetSegment} nl:{id.NetLane} p:{id.Prop} ({id});pos = {position}; postionSeed: {positionSeed}; targetIdx: {targetIdx}; switchInfo: {switchInfo.GetHashCode().ToString("X16")}; source: {Environment.StackTrace}");
-                    //LogUtils.DoWarnLog($"seed =  {id.Index} +{(int)(position.x + position.y + position.z) % 100} = {seed} | targetIdx = {targetIdx} | position = {position}");
                     infoItem = switchInfo.SwitchItems[targetIdx];
                 }
 
-                angle += infoItem.RotationOffset * Mathf.Deg2Rad;
-                offsetToAdd += infoItem.PositionOffset;
                 return true;
             }
             return false;
         }
 
-        public static void CheckIfShallCircle(string parentName, PrefabInfo info, int propIdx, Vector3 position)
+        public void CheckIfShallCircle(string parentName, PrefabInfo info, int propIdx, Vector3 position)
         {
             if (PSBuildingPropTab.Instance?.component?.isVisible is true && !(info is null))
             {
@@ -137,9 +171,9 @@ namespace Klyte.PropSwitcher.Overrides
             }
         }
 
-        public static readonly Color orange = new Color(1, .5f, 0, 1);
+        public readonly Color orange = new Color(1, .5f, 0, 1);
 
-        public static void OnRenderOverlay(CameraInfo camInfo)
+        public void OnRenderOverlay(CameraInfo camInfo)
         {
             var circleSize = Mathf.Lerp(0, 3f, SimulationManager.instance.m_realTimer % 0.8f / 0.8f);
             foreach (var position in renderOverlayCirclePositions)
@@ -149,6 +183,22 @@ namespace Klyte.PropSwitcher.Overrides
                 Singleton<RenderManager>.instance.OverlayEffect.DrawCircle(camInfo, orangeHalf, position, position.w + circleSize, -1f, 1280f, false, true);
             }
             renderOverlayCirclePositions.Clear();
+        }
+
+
+        private bool isRecalculatingProps = false;
+        private int recalculateCooldown = 0;
+        public string CurrentStatusRecalculation { get; private set; }
+
+        public void RecalculateProps() => SimulationManager.instance.StartCoroutine(RecalculatePropsAsync());
+
+        private IEnumerator RecalculatePropsAsync()
+        {
+            yield return 0;
+            for (int i = 0; i < RenderManager.instance.m_groups.Length; i++)
+            {
+                RenderManager.instance.UpdateGroups(i);
+            }
         }
     }
 }
