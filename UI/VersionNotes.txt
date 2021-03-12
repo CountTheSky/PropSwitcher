@@ -1,18 +1,11 @@
-﻿<color #FF8800>PSv1.2 (14/NOV/20)</color>
-<color yellow>- Fixed tree suport</color>
-- Fixed some UI Behavior
-
-<color=yellow>r1 (6/MAR/21):</color> Fixed compatibility with some mods made by kian.zarrin. (and possibly others that deals with trees in roads)
-
-<color #BB8855>Previous version notes: v1.1 (18/JUL/20)</color>
-<color gray>- Added multi-replace support: You can choose a bunch of possible props/trees to replace
-You can configure them to randomize by building/segment, or set it to be fully randomized. Can be very useful to easily generate a randomized forest!
-<color cyan>NOTE:</color> Due some deep changes, all previously made changes that had as target to remove a tree or prop will be erased on first load.
-
-- Added rotation offset support to props
-Trees unsuported due to lack of game code support for that.
-
-- Minor fixes
-	> Trees names on search now are the same from ingame UI
-	> Fixed illumination properties when replacing a prop
-	> Added support to props with effects</color>
+﻿<color #FF8800>PSv1.3 (11/MAR/21)</color>
+- Ensured that ArrayOutOfRangeException error won't happen anymore
+- Added support to edit subbuildings props (now you will be able to pick them with the building picker tool)
+- Fixed UI: Now the rules are paged and only 5 are shown per loading by default (can be configured, but a higher value can cause game slowdown - like it used to happen in older versions)
+- Fixed UI: Now the filters will be applied in a smarter way, preventing screen freezes
+- Now this mod costs <color green>nothing</color> to game's FPS performance, since it only will calculate the replacements once and then cache the results for rendering.
+- <color yellow>NEW FEATURE:</color> Now you can edit position offsets for individual instances of props and trees in buildings. Search by <color cyan>"Prop #"</color> or the prop name at the prop to replace text input to list them.
+	<color red>IMPORTANT!</color> Height adjustment only will work for some props placed on wall. Props on ground probably won't be affected!
+	<color cyan>NOTE:</color> Net segments don't have this feature by now, and it won't be supported globally.
+- Fixed compatibility with some mods made by kian.zarrin. (and possibly others that deals with trees in roads)
+- Fixed: Search names weren't matching game's props/trees names.

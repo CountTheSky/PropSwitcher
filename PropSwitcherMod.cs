@@ -8,7 +8,7 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-[assembly: AssemblyVersion("1.2.1.*")]
+[assembly: AssemblyVersion("1.3.0.0")]
 namespace Klyte.PropSwitcher
 {
     public class PropSwitcherMod : BasicIUserMod<PropSwitcherMod, PSController, PSPanel>
@@ -16,7 +16,7 @@ namespace Klyte.PropSwitcher
 
         public override string IconName => "K45_PS_Icon";
         public override string SimpleName => "Prop Switcher";
-        public override string Description => "Simple switch from a prop model to another in all their uses";
+        public override string Description => "Simple switch from a prop/tree model to another in all their uses";
 
         public override void TopSettingsUI(UIHelperExtension ext) => AddFolderButton(PSController.DefaultGlobalPropConfigurationFolder, ext, "K45_PS_GLOBALREPLACEMENTPROPFOLDER");
 

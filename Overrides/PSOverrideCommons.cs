@@ -185,9 +185,6 @@ namespace Klyte.PropSwitcher.Overrides
             renderOverlayCirclePositions.Clear();
         }
 
-
-        private bool isRecalculatingProps = false;
-        private int recalculateCooldown = 0;
         public string CurrentStatusRecalculation { get; private set; }
 
         public void RecalculateProps() => SimulationManager.instance.StartCoroutine(RecalculatePropsAsync());
