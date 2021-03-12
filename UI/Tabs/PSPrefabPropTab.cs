@@ -1,7 +1,6 @@
 ﻿using ColossalFramework;
 using ColossalFramework.Globalization;
 using ColossalFramework.UI;
-using Klyte.Commons;
 using Klyte.Commons.Extensors;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
@@ -140,10 +139,13 @@ namespace Klyte.PropSwitcher.UI
         #region Action Buttons
         private void OnClearList()
         {
-            PSPropData.Instance.PrefabChildEntries.Remove(m_prefab.text);
+            if (GetCurrentParentPrefabInfo() != null)
+            {
+                PSPropData.Instance.PrefabChildEntries.Remove(GetCurrentParentPrefabInfo()?.name);
 
-            PSOverrideCommons.Instance.RecalculateProps();
-            UpdateDetoursList();
+                PSOverrideCommons.Instance.RecalculateProps();
+                ForceUpdate();
+            }
         }
         private void OnExportAsGlobal()
         {
@@ -183,13 +185,13 @@ namespace Klyte.PropSwitcher.UI
                     return true;
                 });
 
-                UpdateDetoursList();
+                ForceUpdate();
             }
         }
         private void OnReloadFiles()
         {
             PropSwitcherMod.Controller.ReloadPropGlobals();
-            UpdateDetoursList();
+            ForceUpdate();
         }
         internal abstract void EnablePickTool();
 

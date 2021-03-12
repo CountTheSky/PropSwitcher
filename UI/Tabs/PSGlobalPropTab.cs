@@ -48,6 +48,8 @@ namespace Klyte.PropSwitcher.UI
             m_rotationOffset.text = targetSwitch.RotationOffset.ToString("F3");
             m_seedSource.isChecked = info.SeedSource == RandomizerSeedSource.INSTANCE;
             m_rotationOffset.parent.isVisible = IsProp(m_in.text);
+
+            ForceUpdate();
             UpdateDetoursList(targetSwitch);
         }
 
@@ -56,10 +58,10 @@ namespace Klyte.PropSwitcher.UI
         #region Action Buttons
         private void OnClearList()
         {
-            PSPropData.Instance.Entries = new XmlDictionary<PrefabChildEntryKey, SwitchInfo>();
+            PSPropData.Instance.Entries.Clear();
 
             PSOverrideCommons.Instance.RecalculateProps();
-            UpdateDetoursList();
+            ForceUpdate();
         }
         private void OnExportData(string defaultText = null) => K45DialogControl.ShowModalPromptText(new K45DialogControl.BindProperties
         {
@@ -155,7 +157,7 @@ namespace Klyte.PropSwitcher.UI
                         PSPropData.Instance.Entries = newConfig.Data;
 
                         PSOverrideCommons.Instance.RecalculateProps();
-                        UpdateDetoursList();
+                        ForceUpdate();
                     }
                     return true;
                 });
