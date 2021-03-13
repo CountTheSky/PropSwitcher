@@ -35,7 +35,7 @@ namespace Klyte.PropSwitcher.Overrides
 
         private readonly HashSet<Vector4> renderOverlayCirclePositions = new HashSet<Vector4>();
 
-        private long ToCacheKey(ref InstanceID id, int propIdx) => ((long)id.Index << 16) | ((long)propIdx & ((1 << 16) - 1));
+        private long ToCacheKey(ref InstanceID id, int propIdx) => ((long)id.RawData << 16) | ((long)propIdx & ((1 << 16) - 1));
 
         public bool GetTargetInfo_internal(PrefabInfo info, ref InstanceID id, ref Vector3 randomizerParameters, int propIdx, bool isCalc, out Item result)
         {

@@ -10,4 +10,4 @@
 - Fixed compatibility with some mods made by kian.zarrin. (and possibly others that deals with trees in roads)
 - Fixed: Search names weren't matching game's props/trees names.
 
-<color yellow>r1: Fixed terrain trees not being affected by rules</color>
+<color yellow>r1/r2:</color> Fixed terrain trees not being affected by rules
