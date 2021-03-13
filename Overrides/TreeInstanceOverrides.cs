@@ -34,8 +34,7 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(TreeInstance).GetMethod("CheckOverlap", RedirectorUtils.allFlags), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
             AddRedirect(typeof(TreeInstance).GetMethod("OverlapQuad", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
             AddRedirect(typeof(TreeInstance).GetMethod("TerrainUpdated", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObj"));
-            AddRedirect(typeof(TreeInstance).GetMethod("CalculateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObjCalc"));
+            AddRedirect(typeof(TreeInstance).GetMethod("PopulateGroupData", RedirectorUtils.allFlags & ~System.Reflection.BindingFlags.Static), null, null, GetType().GetMethod("DetourTreeInstanceObjCalc"));
             AddRedirect(typeof(TreeInstance).GetMethod("AfterTerrainUpdated", RedirectorUtils.allFlags), GetType().GetMethod("CheckValidTree"));
         }
 
@@ -44,7 +43,7 @@ namespace Klyte.PropSwitcher.Overrides
         public static IEnumerable<CodeInstruction> DetourTreeInstanceObj(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessDetour(il, instr, "GetTargetInfoWithPosition", false, false);
         public static IEnumerable<CodeInstruction> DetourTreeInstanceObjCalc(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessDetour(il, instr, "GetTargetInfoWithPosition", false, true);
         public static IEnumerable<CodeInstruction> DetourTreeInstanceObjRender(IEnumerable<CodeInstruction> instr, ILGenerator il) => ProcessDetour(il, instr, "GetTargetInfoWithPosition", true, false);
-        private static IEnumerable<CodeInstruction> ProcessDetour(ILGenerator il, IEnumerable<CodeInstruction> instr, string getMethod, bool isRender, bool isCalc = false)
+        private static IEnumerable<CodeInstruction> ProcessDetour(ILGenerator il, IEnumerable<CodeInstruction> instr, string getMethod, bool isRender, bool isCalc)
         {
             var instrList = new List<CodeInstruction>(instr);
             for (int i = 0; i < instrList.Count; i++)

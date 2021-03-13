@@ -9,3 +9,5 @@
 	<color cyan>NOTE:</color> Net segments don't have this feature by now, and it won't be supported globally.
 - Fixed compatibility with some mods made by kian.zarrin. (and possibly others that deals with trees in roads)
 - Fixed: Search names weren't matching game's props/trees names.
+
+<color yellow>r1: Fixed terrain trees not being affected by rules</color>
