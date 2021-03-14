@@ -10,7 +10,6 @@ using static RenderManager;
 
 namespace Klyte.PropSwitcher.Overrides
 {
-
     public class PropInstanceOverrides : Redirector, IRedirectable
     {
 
@@ -204,98 +203,6 @@ namespace Klyte.PropSwitcher.Overrides
             }
             LogUtils.PrintMethodIL(instrList);
             return instrList;
-
-
-
-            //for (int i = 1; i < instrList.Count - 3; i++)
-            //{
-            //    if (relocateLayerCheck && instrList[i - 1].opcode == OpCodes.Ldarg_S && instrList[i - 1].operand is byte b && b == hasPropsIdx)
-            //    {
-            //        instrList[i].opcode = OpCodes.Ldc_I4_0;
-            //    }
-
-            //    if (relocateLayerCheck && instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == finalPropIdx
-            //        && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_prefabDataLayer"
-            //        && instrList[i + 2].opcode == OpCodes.Ldarg_S && instrList[i + 2].operand is byte b1 && b1 == layerArgIdx
-            //        && instrList[i + 3].opcode == OpCodes.Beq)
-            //    {
-            //        instrList.RemoveRange(i, 8);
-            //    }
-
-            //    if (instrList[i + 1].opcode == OpCodes.Stloc_S && instrList[i + 1].operand is LocalBuilder fi && fi.LocalIndex == variationIdx)
-            //    {
-            //        var localProp = il.DeclareLocal(typeof(PropInfo));
-            //        var localHasProp = il.DeclareLocal(typeof(bool));
-            //        var endloopLabel = il.DefineLabel();
-            //        var lastInsertLabel = il.DefineLabel();
-            //        var lastInsert = new CodeInstruction(OpCodes.Ldloc_S, localProp);
-            //        lastInsert.labels.Add(lastInsertLabel);
-
-            //        instrList.InsertRange(i - 1,
-            //        new List<CodeInstruction>{
-            //            new CodeInstruction(OpCodes.Ldarg_S,propIdIdx),
-            //            new CodeInstruction(OpCodes.Ldloc_S,jIdx),
-            //            new CodeInstruction(OpCodes.Ldarg_S,laneIdArgIdx),
-            //      //    new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
-            //        //  new CodeInstruction(OpCodes.Ldstr,sourceStr),
-            //            new CodeInstruction(OpCodes.Ldloca_S,angleOffsetVar),
-            //            new CodeInstruction(isCalc?OpCodes.Ldc_I4_1:OpCodes.Ldc_I4_0),
-            //            new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_GetProp",RedirectorUtils.allFlags)),
-            //            new CodeInstruction(OpCodes.Stloc_S,localProp)
-            //        }
-            //        .Union(relocateLayerCheck ?
-            //                new List<CodeInstruction>{
-            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
-            //                new CodeInstruction(OpCodes.Ldnull),
-            //                new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
-            //                new CodeInstruction(OpCodes.Stloc_S,localHasProp),
-            //                new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
-            //                new CodeInstruction(OpCodes.Ldarg_S,hasPropsIdx),
-            //                new CodeInstruction(OpCodes.Ldind_U1),
-            //                new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
-            //                new CodeInstruction(OpCodes.Or),
-            //                new CodeInstruction(OpCodes.Stind_I1),
-            //                new CodeInstruction(OpCodes.Ldloc_S,localHasProp),
-            //                new CodeInstruction(OpCodes.Brtrue,endloopLabel ),
-            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
-            //                new CodeInstruction(OpCodes.Ldfld,typeof(PrefabInfo).GetField("m_prefabDataLayer",RedirectorUtils.allFlags)),
-            //                new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
-            //                new CodeInstruction(OpCodes.Beq,lastInsertLabel),
-            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
-            //                new CodeInstruction(OpCodes.Ldfld,typeof(PropInfo).GetField("m_effectLayer",RedirectorUtils.allFlags)),
-            //                new CodeInstruction(OpCodes.Ldarg_S,layerArgIdx),
-            //                new CodeInstruction(OpCodes.Bne_Un,endloopLabel),
-            //                lastInsert
-            //            } : new List<CodeInstruction>() {
-            //                new CodeInstruction(OpCodes.Ldloc_S,localProp),
-            //                new CodeInstruction(OpCodes.Ldnull),
-            //                new CodeInstruction(OpCodes.Call, typeof(UnityEngine.Object).GetMethod("op_Equality",RedirectorUtils.allFlags)),
-            //                new CodeInstruction(OpCodes.Brtrue,endloopLabel),
-            //                lastInsert }));
-            //        while (i < instrList.Count)
-            //        {
-            //            if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb && lb.LocalIndex == jIdx)
-            //            {
-            //                instrList[i].labels.Add(endloopLabel);
-            //                break;
-            //            }
-            //            i++;
-            //        }
-            //        break;
-            //    }
-            //}
-            //for (int i = 0; i < instrList.Count - 3; i++)
-            //{
-            //    if (instrList[i].opcode == OpCodes.Ldloc_S && instrList[i].operand is LocalBuilder lb1 && lb1.LocalIndex == propDataIdx
-            //        && instrList[i + 1].opcode == OpCodes.Ldfld && instrList[i + 1].operand is FieldInfo fi1 && fi1.Name == "m_angle")
-            //    {
-            //        instrList.InsertRange(i, new List<CodeInstruction>{
-            //            new CodeInstruction(OpCodes.Ldloc_S,angleOffsetVar),
-            //            new CodeInstruction(OpCodes.Add),
-            //            });
-            //        i += 6;
-            //    }
-            //}
         }
 
         public static PropInfo NetLane_CalculateTargetProp(PropInfo finalInfo, uint laneId, out float angle, int j, int propIdx, bool isCalc)
@@ -308,16 +215,6 @@ namespace Klyte.PropSwitcher.Overrides
             var propIdxTgt = ((propIdx << 8) | (j & 0xff));
             return GetTargetInfo(finalInfo, ref id, ref offsetPosition, ref angle, ref vector3, isCalc, propIdxTgt);
         }
-
-        //public static PropInfo NetLane_GetProp(PropInfo finalInfo, int propIdx, int j, uint laneId, out float angleOffset, bool isCalc)
-        //{
-        //    angleOffset = 0;
-        //    Vector3 offsetToAdd = default;
-        //    var vector3 = new Vector3(laneId, propIdx, j);
-        //    var id = new InstanceID { NetLane = laneId };
-        //    return GetTargetInfo(finalInfo, ref id, ref offsetToAdd, ref angleOffset, ref vector3, isCalc, ((propIdx << 8) | (j & 0xff)));
-        //}
-
         #endregion
 
         public static bool ApplySwitchGlobal(ref PropInfo info, ref Vector3 position, ushort propID, ref float angle) => (info = GetTargetInfoGlobal(ref info, ref position, propID, ref angle, false)) != null;
@@ -444,7 +341,7 @@ namespace Klyte.PropSwitcher.Overrides
             if (PSOverrideCommons.Instance.GetTargetInfo_internal(info, ref id, ref position, propIdx, isCalc, out Item result))
             {
                 if (result != null)
-                {                   
+                {
                     offsetToAdd += result.PositionOffset;
                     angle += result.RotationOffset;
                     return result.CachedProp;
