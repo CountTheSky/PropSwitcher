@@ -189,6 +189,7 @@ namespace Klyte.PropSwitcher.Overrides
 
         public void RecalculateProps() => SimulationManager.instance.StartCoroutine(RecalculatePropsAsync());
 
+
         private IEnumerator RecalculatePropsAsync()
         {
             yield return 0;
@@ -196,6 +197,7 @@ namespace Klyte.PropSwitcher.Overrides
             {
                 RenderManager.instance.UpdateGroups(i);
             }
+
         }
     }
 }
