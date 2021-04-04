@@ -7,7 +7,7 @@ using System.Xml.Serialization;
 
 namespace Klyte.PropSwitcher.Data
 {
-    public class PSPropData : DataExtensorBase<PSPropData>
+    public class PSPropData : DataExtensionBase<PSPropData>
     {
         [XmlElement("Entries")]
         public XmlDictionary<PrefabChildEntryKey, SwitchInfo> Entries { get; set; } = new XmlDictionary<PrefabChildEntryKey, SwitchInfo>();
