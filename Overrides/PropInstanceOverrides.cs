@@ -1,5 +1,5 @@
 ﻿using Harmony;
-using Klyte.Commons.Extensors;
+using Klyte.Commons.Extensions;
 using Klyte.Commons.Utils;
 using System.Collections.Generic;
 using System.Reflection;
@@ -25,7 +25,7 @@ namespace Klyte.PropSwitcher.Overrides
             AddRedirect(typeof(BuildingAI).GetMethod("CalculatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_CalculatePropGroupData"));//7
             AddRedirect(typeof(BuildingAI).GetMethod("PopulatePropGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileBuildingAI_PopulatePropGroupData"));//16
             AddRedirect(typeof(BuildingAI).GetMethod("RenderProps", RedirectorUtils.allFlags & ~BindingFlags.Public), null, null, GetType().GetMethod("TranspileBuildingAI_RenderProps"));
-            AddRedirect(typeof(BuildingManager).GetMethod("EndOverlay"), null, GetType().GetMethod("AfterEndRenderOverlayBuilding"));
+            AddRedirect(typeof(BuildingManager).GetMethod("IRenderableManager.EndOverlay", RedirectorUtils.allFlags), null, GetType().GetMethod("AfterEndRenderOverlayBuilding"));
             AddRedirect(typeof(NetLane).GetMethod("CalculateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_CalculateGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("PopulateGroupData", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_PopulateGroupData"));
             AddRedirect(typeof(NetLane).GetMethod("RenderInstance", RedirectorUtils.allFlags), null, null, GetType().GetMethod("TranspileNetLane_RenderInstance"));
@@ -34,8 +34,36 @@ namespace Klyte.PropSwitcher.Overrides
         public static void AfterEndRenderOverlayBuilding(CameraInfo cameraInfo) => PSOverrideCommons.Instance.OnRenderOverlay(cameraInfo);
 
         #region BuildingAI
+        public static IEnumerable<CodeInstruction> TranspileBuildingManager_GetLayers(IEnumerable<CodeInstruction> instr, ILGenerator il)
+        {
+            var instrList = new List<CodeInstruction>(instr);
+
+            for (int i = 2; i < instrList.Count; i++)
+            {
+                if (instrList[i].opcode == OpCodes.Ldfld && instrList[i].operand is FieldInfo fi && fi.Name == "m_finalProp")
+                {
+                    instrList.RemoveAt(i);
+                    instrList.InsertRange(i, new List<CodeInstruction>{
+                        new CodeInstruction(OpCodes.Ldarg_1),
+                        new CodeInstruction(OpCodes.Ldfld, "m_buildingAI"),
+                        new CodeInstruction(OpCodes.Ldarg_2),
+                        new CodeInstruction(OpCodes.Ldloc_1),
+                        new CodeInstruction(OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("BuildingAI_CalculateTargetPropIgnoreOffsets",RedirectorUtils.allFlags)),
+                        });
+                    i += 6;
+                }
+            }
+
+            LogUtils.PrintMethodIL(instrList);
+
+            return instrList;
+        }
+
+
+
         public static IEnumerable<CodeInstruction> TranspileBuildingAI_CalculatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(7, instr, il, true);
         public static IEnumerable<CodeInstruction> TranspileBuildingAI_PopulatePropGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => TranspileBuildingAI_XxxxPropGroupData(16, instr, il, false);
+
         private static IEnumerable<CodeInstruction> TranspileBuildingAI_XxxxPropGroupData(int jVarIdx, IEnumerable<CodeInstruction> instr, ILGenerator il, bool isCalc)
         {
             var instrList = new List<CodeInstruction>(instr);
@@ -150,12 +178,13 @@ namespace Klyte.PropSwitcher.Overrides
 
         public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.Instance.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalProp, j, location);
 
-        public static PropInfo BuildingAI_CalculateTargetProp(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle, out Vector3 positionOffset, ushort j, bool isCalc)
+        public static PropInfo BuildingAI_CalculateTargetPropIgnoreOffsets(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, int j) => BuildingAI_CalculateTargetProp(prop, buildingAI, buildingID, out _, out _, j, false);
+        public static PropInfo BuildingAI_CalculateTargetProp(BuildingInfo.Prop prop, BuildingAI buildingAI, ushort buildingID, out float angle, out Vector3 positionOffset, int j, bool isCalc)
         {
             angle = 0;
             positionOffset = default;
             var finalProp = prop.m_finalProp;
-            if (finalProp == null)
+            if (finalProp is null)
             {
                 return null;
             }
@@ -187,6 +216,7 @@ namespace Klyte.PropSwitcher.Overrides
                         new CodeInstruction(OpCodes.Ldloc_S, jIdx),
                         new CodeInstruction(OpCodes.Ldloc_S, propIdIdx),
                         new CodeInstruction(isCalc?OpCodes.Ldc_I4_1:OpCodes.Ldc_I4_0),
+                        new CodeInstruction(OpCodes.Ldstr, source),
                         new CodeInstruction( OpCodes.Call, typeof(PropInstanceOverrides).GetMethod("NetLane_CalculateTargetProp",RedirectorUtils.allFlags)),
                         });
                     i += 6;
@@ -205,7 +235,7 @@ namespace Klyte.PropSwitcher.Overrides
             return instrList;
         }
 
-        public static PropInfo NetLane_CalculateTargetProp(PropInfo finalInfo, uint laneId, out float angle, int j, int propIdx, bool isCalc)
+        public static PropInfo NetLane_CalculateTargetProp(PropInfo finalInfo, uint laneId, out float angle, int j, int propIdx, bool isCalc, string src = "")
         {
             angle = 0;
             Vector3 offsetPosition = default;

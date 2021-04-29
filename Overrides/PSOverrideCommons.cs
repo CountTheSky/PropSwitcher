@@ -46,7 +46,7 @@ namespace Klyte.PropSwitcher.Overrides
             }
 
 
-            if (info == null || PSPropData.Instance?.Entries == null)
+            if (info is null || PSPropData.Instance?.Entries is null)
             {
                 result = null;
                 return false;
@@ -71,9 +71,7 @@ namespace Klyte.PropSwitcher.Overrides
             else if (refId.NetNode != 0)
             {
                 parentName = NetManager.instance.m_nodes.m_buffer[refId.NetNode].Info.name;
-
             }
-
             else if (refId.Building != 0)
             {
                 parentName = BuildingManager.instance.m_buildings.m_buffer[refId.Building].Info.name;
@@ -189,6 +187,7 @@ namespace Klyte.PropSwitcher.Overrides
 
         public void RecalculateProps() => SimulationManager.instance.StartCoroutine(RecalculatePropsAsync());
 
+
         private IEnumerator RecalculatePropsAsync()
         {
             yield return 0;
@@ -196,6 +195,7 @@ namespace Klyte.PropSwitcher.Overrides
             {
                 RenderManager.instance.UpdateGroups(i);
             }
+
         }
     }
 }

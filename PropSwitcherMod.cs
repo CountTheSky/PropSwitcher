@@ -1,6 +1,6 @@
 using ColossalFramework.Globalization;
 using ColossalFramework.UI;
-using Klyte.Commons.Extensors;
+using Klyte.Commons.Extensions;
 using Klyte.Commons.i18n;
 using Klyte.Commons.Interfaces;
 using Klyte.Commons.Utils;
@@ -9,7 +9,7 @@ using System.IO;
 using System.Reflection;
 using UnityEngine;
 
-[assembly: AssemblyVersion("1.3.0.3")]
+[assembly: AssemblyVersion("1.3.0.4")]
 namespace Klyte.PropSwitcher
 {
     public class PropSwitcherMod : BasicIUserMod<PropSwitcherMod, PSController, PSPanel>

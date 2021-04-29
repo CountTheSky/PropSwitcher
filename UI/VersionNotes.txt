@@ -11,3 +11,4 @@
 - Fixed: Search names weren't matching game's props/trees names.
 
 <color yellow>r1/r2:</color> Fixed terrain trees not being affected by rules
+<color yellow>r4:</color> Fixed some effects for props stopping working after a time
