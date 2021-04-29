@@ -161,6 +161,7 @@
     <Compile Include="Data\PSPropData.cs" />
     <Compile Include="Lib\BasicLib.cs" />
     <Compile Include="ModShared\PSShared.cs" />
+    <Compile Include="Overrides\ManagersOverrides.cs" />
     <Compile Include="Overrides\PropInstanceOverrides.cs" />
     <Compile Include="Overrides\PSOverrideCommons.cs" />
     <Compile Include="Overrides\TreeInstanceOverrides.cs" />

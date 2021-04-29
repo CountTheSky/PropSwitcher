@@ -10,7 +10,6 @@ using static RenderManager;
 
 namespace Klyte.PropSwitcher.Overrides
 {
-
     public class TreeInstanceOverrides : Redirector, IRedirectable
     {
 
@@ -143,6 +142,7 @@ namespace Klyte.PropSwitcher.Overrides
         public static void BuildingAI_CheckDrawCircle(Vector3 location, BuildingAI buildingAI, BuildingInfo.Prop prop, ushort j) => PSOverrideCommons.Instance.CheckIfShallCircle(buildingAI.m_info.name, prop.m_finalTree, j, location);
         #endregion
         #region NetLane
+
 
         public static IEnumerable<CodeInstruction> Transpile_NetLane_CalculateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => ApplyTreeRenderSelection(il, instr, true, 1, -1, 14, 5);
         public static IEnumerable<CodeInstruction> Transpile_NetLane_PopulateGroupData(IEnumerable<CodeInstruction> instr, ILGenerator il) => ApplyTreeRenderSelection(il, instr, false, 2, 27, 25, 5);

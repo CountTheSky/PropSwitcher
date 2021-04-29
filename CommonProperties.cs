@@ -11,5 +11,7 @@ namespace Klyte.Commons
         public static string ModRootFolder { get; } = PSController.FOLDER_PATH;
         public static string ModDllRootFolder { get; } = PropSwitcherMod.RootFolder;
         public static string ModIcon => PropSwitcherMod.Instance.IconName;
+
+        public static string GitHubRepoPath { get; } = "klyte45/PropSwitcher";
     }
 }
