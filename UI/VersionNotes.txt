@@ -12,3 +12,4 @@
 
 <color yellow>r1/r2:</color> Fixed terrain trees not being affected by rules
 <color yellow>r4:</color> Fixed some effects for props stopping working after a time
+<color yellow>r5 (17/MAY/21):</color> Fixing garbled text issues when loading the city.
